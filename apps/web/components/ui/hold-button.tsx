@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
-import styles from "./HoldButton.module.css";
+import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { cn } from "../../lib/utils";
 
 /**
  * Press-and-hold confirmation (pointer, or hold Enter/Space). The action fires from a timer the
@@ -12,17 +12,17 @@ export function HoldButton({
   holdingLabel,
   onConfirm,
   durationMs = 1200,
-  tone = "danger",
   disabled,
   hint,
+  className,
 }: {
   children: ReactNode;
   holdingLabel: ReactNode;
   onConfirm: () => void;
   durationMs?: number;
-  tone?: "danger" | "ink";
   disabled?: boolean;
   hint: string;
+  className?: string;
 }) {
   const [holding, setHolding] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -45,16 +45,25 @@ export function HoldButton({
   }, [disabled, durationMs, onConfirm]);
 
   useEffect(() => cancel, [cancel]);
+  const label = holding ? holdingLabel : children;
+  // Fill: clip-path only. Slow and linear while deciding; snaps back in 200ms on release.
+  const fill: CSSProperties = {
+    clipPath: holding ? "inset(0 0 0 0)" : "inset(0 100% 0 0)",
+    transition: holding ? `clip-path ${durationMs}ms linear` : "clip-path 200ms var(--ease-out)",
+  };
 
   return (
     <>
       <button
         type="button"
-        className={`${styles.hold} ${styles[tone]}`}
         data-holding={holding}
-        style={{ ["--hold" as string]: `${durationMs}ms` }}
         disabled={disabled}
         aria-describedby={hintId}
+        className={cn(
+          "border-destructive/50 text-destructive relative inline-flex h-9 items-center justify-center overflow-hidden rounded-md border px-4 text-sm font-medium shadow-xs transition-[transform,background-color] duration-150 select-none touch-none pointer-coarse:h-11",
+          "hover:bg-destructive/10 focus-visible:ring-destructive/30 outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50 data-[holding=true]:scale-[0.97]",
+          className,
+        )}
         onPointerDown={(e) => {
           if (e.button !== 0) return;
           e.currentTarget.setPointerCapture(e.pointerId);
@@ -76,10 +85,10 @@ export function HoldButton({
         onBlur={cancel}
         onContextMenu={(e) => e.preventDefault()}
       >
-        <span className={styles.label}>{holding ? holdingLabel : children}</span>
+        <span className="relative whitespace-nowrap">{label}</span>
         {/* Inverted copy of the label inside the fill; both are clipped together. */}
-        <span className={styles.fill} aria-hidden="true">
-          <span className={styles.labelInverse}>{holding ? holdingLabel : children}</span>
+        <span aria-hidden="true" className="bg-destructive dark:text-background absolute inset-0 flex items-center justify-center whitespace-nowrap text-white" style={fill}>
+          {label}
         </span>
       </button>
       <span id={hintId} className="visually-hidden">

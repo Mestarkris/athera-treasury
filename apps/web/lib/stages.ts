@@ -1,5 +1,5 @@
 import type { LedgerEntry } from "@athera/ledger";
-import type { Stage } from "../components/ui/Timeline";
+import type { Stage } from "../components/ui/timeline";
 
 /** The seven stages of one loop, in order (brief). */
 export const STAGES = [

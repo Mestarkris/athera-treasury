@@ -4,11 +4,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { LedgerEntry } from "@athera/ledger";
 import { useStatus } from "../../components/shell/StatusProvider";
-import { Badge } from "../../components/ui/Badge";
-import { Button } from "../../components/ui/Button";
-import { Timeline, type Stage } from "../../components/ui/Timeline";
+import { Button } from "../../components/ui/button";
+import { StatusBadge as Badge } from "../../components/ui/status-badge";
+import { Timeline, type Stage } from "../../components/ui/timeline";
 import { STAGES, stageEntries, stagesFromRun } from "../../lib/stages";
-import styles from "./demo.module.css";
 
 type Mode = "loop" | "invalid";
 
@@ -16,8 +15,8 @@ function detail(e: LedgerEntry | undefined) {
   if (!e) return undefined;
   const r = e.refs ?? {};
   return (
-    <span className={styles.detail}>
-      <Link href={`/ledger/${e.id}`} className="data">
+    <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+      <Link href={`/ledger/${e.id}`} className="data inline-flex min-h-6 items-center underline underline-offset-4">
         {e.id}
       </Link>
       {r.intent_hash ? (
@@ -26,12 +25,12 @@ function detail(e: LedgerEntry | undefined) {
         </span>
       ) : null}
       {r.tx_hash ? (
-        <a href={r.explorer?.[0]} target="_blank" rel="noreferrer" className="data" title={r.tx_hash} translate="no">
+        <a href={r.explorer?.[0]} target="_blank" rel="noreferrer" className="data inline-flex min-h-6 items-center underline underline-offset-4" title={r.tx_hash} translate="no">
           tx {r.tx_hash.slice(0, 6)}…{r.tx_hash.slice(-4)}
         </a>
       ) : null}
       {r.block_height ? <span className="data">block {r.block_height}</span> : null}
-      {e.result === "block" ? <span className={styles.blockText}>{e.summary}</span> : null}
+      {e.result === "block" ? <span className="text-destructive basis-full">{e.summary}</span> : null}
     </span>
   );
 }
@@ -110,10 +109,10 @@ export function DemoConsole({ lastRun, cost }: { lastRun: LedgerEntry[]; cost: {
   const locked = !operatorEnabled || !token;
 
   return (
-    <div className={styles.console}>
-      <div className={styles.controls}>
+    <div className="grid max-w-3xl grid-cols-[minmax(0,1fr)] gap-6">
+      <div className="flex flex-wrap items-center gap-3">
         <Button
-          variant="primary"
+          variant="default"
           onClick={() => {
             if (!armed) return setArmed(true);
             setArmed(false);
@@ -124,10 +123,10 @@ export function DemoConsole({ lastRun, cost }: { lastRun: LedgerEntry[]; cost: {
         >
           {armed ? `Confirm: move ${cost.total} on mainnet` : "Run demo loop"}
         </Button>
-        <Button variant="danger" onClick={() => start("invalid")} disabled={busy || locked}>
+        <Button variant="outline" className="text-destructive border-destructive/50 hover:text-destructive" onClick={() => start("invalid")} disabled={busy || locked}>
           Trigger invalid action
         </Button>
-        <p className={styles.hint} role="status" id="run-cost">
+        <p className="text-muted-foreground basis-full text-sm" role="status" id="run-cost">
           {!operatorEnabled
             ? "Read-only deployment: runs can only be started on the server (pnpm demo)."
             : !token
@@ -141,15 +140,15 @@ export function DemoConsole({ lastRun, cost }: { lastRun: LedgerEntry[]; cost: {
                     : `Moves ${cost.principal} to ${cost.vendor} on mainnet, then collects the ${cost.fee} fee and pays the revenue split. The invalid action tries more than the per-transaction limit and is blocked before any intent exists.`}
         </p>
         {error ? (
-          <p className={styles.error} role="alert">
+          <p className="text-destructive basis-full text-sm" role="alert">
             {error}
           </p>
         ) : null}
       </div>
 
-      <div className={styles.runHead}>
-        <h2>{isLive ? (mode === "invalid" ? "Invalid action" : "Demo loop") : "Last run in the ledger"}</h2>
-        <p className={styles.runMeta}>
+      <div className="grid gap-1 border-t pt-5">
+        <h2 className="text-xl font-semibold">{isLive ? (mode === "invalid" ? "Invalid action" : "Demo loop") : "Last run in the ledger"}</h2>
+        <p className="text-muted-foreground text-sm">
           {main[0] ? (
             <>
               Run{" "}
@@ -167,7 +166,7 @@ export function DemoConsole({ lastRun, cost }: { lastRun: LedgerEntry[]; cost: {
           )}
         </p>
         {isLive && runFinished ? (
-          <p className={styles.result}>
+          <p className="mt-1">
             {main.some((e) => e.type === "halt") ? (
               <Badge kind="halted" label="Halted by the kill switch" />
             ) : main.some((e) => e.result === "block") ? (
@@ -182,7 +181,7 @@ export function DemoConsole({ lastRun, cost }: { lastRun: LedgerEntry[]; cost: {
       </div>
 
       {reconciled.length > 0 ? (
-        <p className={styles.reconciled}>
+        <p className="text-muted-foreground text-sm">
           First, {reconciled.filter((e) => e.type === "fee").length} unfinished fee(s) from earlier halted runs were collected and split (
           <Link href={`/ledger?run=${reconciled[0]!.run_id}`}>see entries</Link>).
         </p>

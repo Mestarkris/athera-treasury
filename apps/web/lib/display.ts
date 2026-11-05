@@ -1,5 +1,5 @@
 import type { LedgerEntry } from "@athera/ledger";
-import type { BadgeKind } from "../components/ui/Badge";
+import type { StatusKind as BadgeKind } from "../components/ui/status-badge";
 
 /**
  * How to show an entry's result. Ledger entries are immutable, so an intent entry written as

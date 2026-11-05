@@ -1,27 +1,29 @@
+import { ArrowRight, OctagonX, ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import { EntrySheetHost } from "../components/ledger/EntrySheetHost";
 import { LedgerTable } from "../components/ledger/LedgerTable";
-import { buttonClass } from "../components/ui/Button";
-import page from "../components/ui/page.module.css";
+import { buttonVariants } from "../components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { PageHeader } from "../components/ui/page-header";
 import { readLedger } from "../lib/ledger";
 import { getStatus } from "../lib/status";
-import styles from "./home.module.css";
+import { cn } from "../lib/utils";
 
 export const dynamic = "force-dynamic";
 
 function Meter({ label, used, limit, ratio, note }: { label: string; used: string; limit: string; ratio: number; note?: string }) {
   const pct = Math.min(Math.max(ratio, 0), 1);
   return (
-    <div className={styles.meter}>
-      <div className={styles.meterHead}>
+    <div className="grid gap-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
         <span>{label}</span>
         <span className="data">
-          {used} <span className={page.muted}>of</span> {limit}
+          {used} <span className="text-muted-foreground">of</span> {limit}
         </span>
       </div>
       <div
-        className={styles.track}
+        className="bg-muted h-2 overflow-hidden rounded-full"
         role="meter"
         aria-label={label}
         aria-valuemin={0}
@@ -29,10 +31,22 @@ function Meter({ label, used, limit, ratio, note }: { label: string; used: strin
         aria-valuenow={Math.round(pct * 100)}
         aria-valuetext={`${used} of ${limit}`}
       >
-        <span className={styles.fill} style={{ transform: `scaleX(${pct})` }} data-near={pct >= 0.8} />
+        <span className={cn("block h-full origin-left rounded-full", pct >= 0.8 ? "bg-warning" : "bg-primary")} style={{ transform: `scaleX(${pct})` }} />
       </div>
-      {note ? <p className={page.note}>{note}</p> : null}
+      {note ? <p className="text-muted-foreground text-xs">{note}</p> : null}
     </div>
+  );
+}
+
+function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: ReactNode }) {
+  return (
+    <Card className="gap-2 py-4">
+      <CardHeader className="px-4">
+        <CardDescription>{label}</CardDescription>
+        <CardTitle className="data text-xl font-semibold">{value}</CardTitle>
+      </CardHeader>
+      {hint ? <CardContent className="text-muted-foreground px-4 text-xs">{hint}</CardContent> : null}
+    </Card>
   );
 }
 
@@ -40,9 +54,9 @@ function RecentLedger() {
   const { entries } = readLedger();
   const recent = entries.slice(-8).reverse();
   return recent.length ? (
-    <LedgerTable caption={`Latest ${recent.length} of ${entries.length} entries`} entries={recent} all={entries} />
+    <LedgerTable caption={`Latest ${recent.length} of ${entries.length} ledger entries`} entries={recent} all={entries} />
   ) : (
-    <p className={page.muted}>The ledger is empty. Run the demo loop to create the first entries.</p>
+    <p className="text-muted-foreground text-sm">The ledger is empty. Run the demo loop to create the first entries.</p>
   );
 }
 
@@ -55,90 +69,106 @@ export default async function ControlRoom() {
   const halted = s.killSwitch.engaged || s.killSwitch.configFlag;
 
   return (
-    <>
-      <div className={page.head}>
-        <h1>Control room</h1>
-        <p className={page.lead}>
-          Agents act only inside <Link href="/policy">config.yaml</Link> (policy v{s.policy.version},{" "}
-          <span className="data">{s.policy.hash.slice(0, 6)}</span>). Every value moves as a NEAR Intent on {s.network}, and every step is written to the{" "}
-          <Link href="/ledger">ledger</Link>.
-        </p>
-        <div className={page.actions}>
-          <Link href="/demo" className={buttonClass("primary")}>
-            Run demo loop
-          </Link>
-          <Link href="/ledger" className={buttonClass("secondary")}>
-            Open ledger
-          </Link>
-        </div>
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
+      <PageHeader
+        title="Control room"
+        description={
+          <>
+            Agents act only inside{" "}
+            <Link href="/policy" className="text-foreground underline underline-offset-4">
+              config.yaml
+            </Link>
+            . Every value moves as a NEAR Intent on {s.network}, and every step is written to the{" "}
+            <Link href="/ledger" className="text-foreground underline underline-offset-4">
+              ledger
+            </Link>
+            .
+          </>
+        }
+        actions={
+          <>
+            <Link href="/demo" className={buttonVariants()}>
+              Run demo loop
+              <ArrowRight aria-hidden="true" />
+            </Link>
+            <Link href="/ledger" className={buttonVariants({ variant: "outline" })}>
+              Open ledger
+            </Link>
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Stat
+          label="Treasury balance"
+          value={s.balance.display ?? "RPC unavailable"}
+          hint={s.balance.display ? `inside ${s.verifier}, read ${s.balance.at.slice(11, 19)} UTC` : undefined}
+        />
+        <Stat label="Moved today" value={s.today.moved.display} hint={`of ${s.today.perDay.display} per day (UTC)`} />
+        <Stat label="Policy" value={`v${s.policy.version} · ${s.policy.hash.slice(0, 6)}`} hint="sha256 of config.yaml" />
+        <Stat
+          label="Ledger"
+          value={`${s.ledger.entries} entries`}
+          hint={s.ledger.chainOk ? "hash chain intact" : <span className="text-destructive">hash chain broken</span>}
+        />
       </div>
 
-      <section className={page.section} aria-labelledby="limits">
-        <div className={page.sectionHead}>
-          <h2 id="limits">Today against limits</h2>
-          <p>UTC day {s.today.date}. Counted from the ledger: every submitted intent counts unless its settlement is recorded as failed.</p>
-        </div>
-        <div className={`${page.body} ${styles.meters}`}>
-          <Meter label={`Capital moved from ${s.treasury}`} used={s.today.moved.display} limit={`${s.today.perDay.display} per day`} ratio={ratio} />
-          <Meter
-            label="Inference spend"
-            used={`$${s.today.inference.usedUsd}`}
-            limit={`$${s.today.inference.limitUsd} per day`}
-            ratio={inferenceRatio}
-            note="The treasury agent is rule-based and makes no model calls, so this stays at zero. The limit is still enforced."
-          />
-          <dl className={page.dl}>
-            <dt>Per transaction</dt>
-            <dd className="data">{s.today.perTx.display} maximum</dd>
-            <dt>Treasury balance</dt>
-            <dd>
-              {s.balance.display ? (
-                <>
-                  <span className="data">{s.balance.display}</span>{" "}
-                  <span className={page.muted}>
-                    inside {s.verifier}, read {s.balance.at.slice(11, 19)} UTC
-                  </span>
-                </>
-              ) : (
-                <span className={page.muted}>RPC unavailable right now</span>
-              )}
-            </dd>
-            <dt>Ledger</dt>
-            <dd>
-              <span className="data">{s.ledger.entries}</span> entries, hash chain{" "}
-              {s.ledger.chainOk ? "intact" : <strong className={styles.bad}>broken</strong>}
-            </dd>
-          </dl>
-        </div>
-      </section>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Today against limits</CardTitle>
+            <CardDescription>
+              UTC day {s.today.date}. Counted from the ledger: every submitted intent counts unless its settlement is recorded as failed.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-[minmax(0,1fr)] gap-6">
+            <Meter label={`Capital moved from ${s.treasury}`} used={s.today.moved.display} limit={`${s.today.perDay.display} per day`} ratio={ratio} />
+            <Meter
+              label="Inference spend"
+              used={`$${s.today.inference.usedUsd}`}
+              limit={`$${s.today.inference.limitUsd} per day`}
+              ratio={inferenceRatio}
+              note="The treasury agent is rule-based and makes no model calls, so this stays at zero. The limit is still enforced."
+            />
+            <p className="text-muted-foreground text-sm">
+              Per transaction: <span className="data text-foreground">{s.today.perTx.display}</span> maximum.
+            </p>
+          </CardContent>
+        </Card>
 
-      <section className={page.section} aria-labelledby="kill">
-        <div className={page.sectionHead}>
-          <h2 id="kill">Kill switch</h2>
-          <p>Hold the control in the status bar for 1.2 seconds. Every agent stops at its next step and nothing new is signed or submitted.</p>
-        </div>
-        <div className={page.body}>
-          <p className={halted ? styles.haltedText : undefined}>
-            {halted
-              ? `Engaged${s.killSwitch.since ? ` at ${s.killSwitch.since.slice(11, 19)} UTC` : ""}: ${s.killSwitch.configFlag ? "kill_switch is true in config.yaml" : s.killSwitch.reason}.`
-              : "Not engaged."}{" "}
-            An intent already broadcast cannot be recalled. Anything it leaves unfinished is picked up by the next run, through the same policy checks.
-          </p>
-        </div>
-      </section>
+        <Card className={cn(halted && "border-destructive/50")}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              {halted ? <OctagonX className="text-destructive size-4" aria-hidden="true" /> : <ShieldCheck className="text-success size-4" aria-hidden="true" />}
+              Kill switch
+            </CardTitle>
+            <CardDescription>{halted ? "Engaged" : "Not engaged"}</CardDescription>
+          </CardHeader>
+          <CardContent className="text-muted-foreground grid gap-3 text-sm">
+            {halted ? (
+              <p className="text-destructive">
+                Engaged{s.killSwitch.since ? ` at ${s.killSwitch.since.slice(11, 19)} UTC` : ""}:{" "}
+                {s.killSwitch.configFlag ? "kill_switch is true in config.yaml" : s.killSwitch.reason}.
+              </p>
+            ) : null}
+            <p>Hold the control in the header for 1.2 seconds. Every agent stops at its next step and nothing new is signed or submitted.</p>
+            <p>An intent already broadcast cannot be recalled. Anything it leaves unfinished is picked up by the next run, through the same policy checks.</p>
+          </CardContent>
+        </Card>
+      </div>
 
-      <section className={page.section} aria-labelledby="recent">
-        <div className={page.sectionHead}>
-          <h2 id="recent">Recent ledger</h2>
-          <p>Newest first. Every row shows its policy hash and how to verify it.</p>
-        </div>
-        <div className={page.body}>
-          <Suspense fallback={<p className={page.muted}>Reading the ledger…</p>}>
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent ledger</CardTitle>
+          <CardDescription>Newest first. Every row shows its policy hash and how to verify it.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Suspense fallback={<p className="text-muted-foreground text-sm">Reading the ledger…</p>}>
             <RecentLedger />
           </Suspense>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
       <EntrySheetHost />
-    </>
+    </div>
   );
 }

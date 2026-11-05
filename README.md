@@ -145,7 +145,7 @@ Ledger.append at every step · kill-switch check before every step, before signi
 | `packages/settlement` | NEP-413 signing, versioned nonces, NEAR transaction encoding (byte-identical to near-js, tested), RPC, the custody checks |
 | `packages/agents` | Treasury and Accounting agents (proposals only), the orchestrator, reconciliation after a halt |
 | `packages/ledger` | Append-only, hash-chained JSONL ledger |
-| `apps/web` | Next.js console: control room, live demo timeline, ledger, entry detail, policy, security |
+| `apps/web` | Next.js console (Tailwind + shadcn/ui): control room, live demo timeline, ledger, entry detail, policy, security |
 | `scripts/demo` | `demo`, `phase1`, `verify`, `preflight`, `halt`, `keygen` |
 
 Where the non-negotiables are enforced:
@@ -200,11 +200,11 @@ checked against the chain.
 
 ## Documentation
 
-- [docs/decisions.md](docs/decisions.md): every judgement call, D1–D15.
+- [docs/decisions.md](docs/decisions.md): every judgement call, D1–D16.
 - [docs/setup.md](docs/setup.md): accounts, keys, wallet approvals.
-- [docs/design.md](docs/design.md): the "flight recorder" design system.
-- [docs/review-phase6.md](docs/review-phase6.md): the interface guidelines review, AI-look checklist,
-  accessibility scan (0 violations) and JS budget.
+- [docs/design.md](docs/design.md): the UI (Tailwind + shadcn/ui) and the rules it keeps.
+- [docs/review-phase6.md](docs/review-phase6.md): the interface guidelines review and accessibility scan.
+  Since the switch to shadcn/ui (D16), the scan still reports 0 violations; the AI-look checklist there applied to the previous design.
 - [docs/Athera_Treasury_Architecture_Blueprint.pdf](docs/Athera_Treasury_Architecture_Blueprint.pdf):
   the original blueprint.
 
@@ -213,7 +213,7 @@ checked against the chain.
 | Brief item | Status |
 |---|---|
 | Testnet demo | Mainnet with tiny amounts: there is no NEAR Intents testnet (D1) |
-| `/ledger` first-load JS < 120 KB gz | 140.1 KB. The framework alone is ~125 KB; the budget was revised to 140 KB (D13) and is still 133 B over; `/demo` is 141.3 KB |
+| `/ledger` first-load JS < 120 KB gz | 153.2 KB. The Next.js framework alone is ~125 KB, and the switch to Tailwind + shadcn/ui (D16) added ~13 KB; `/demo` is 154.6 KB |
 | Mobile checked on a device | Emulation and automated checks only so far |
 | Public ledger hosting | Not deployed yet |
 | Solver-routed or cross-chain intents | Not demonstrated (D7) |

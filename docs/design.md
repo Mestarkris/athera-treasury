@@ -1,64 +1,41 @@
-# Design: "the flight recorder"
+# Design: shadcn/ui on Tailwind CSS
 
-An instrument panel crossed with an accounting ledger. Exact, quiet, dense. Every element carries
-information; nothing is decoration. The brief's own direction wins every conflict below.
+Since D16 the web console uses a standard component look: Tailwind CSS v4 plus shadcn/ui, with
+the shadcn default "neutral" theme in light and dark (following the OS), Geist and Geist Mono,
+cards, and lucide icons. The earlier bespoke "flight recorder" direction was replaced at the
+user's request. Git history keeps it, for reference.
 
-## Palette (tokens.css; AA checked by script, lowest text pair 4.55:1)
+## What stayed, because it carries meaning
 
-| Role | Light | Dark | Use |
-|---|---|---|---|
-| paper | `#F1F0EC` | `#1C1C1F` | page |
-| paper-sunk | `#E7E5DF` | `#252528` | code, selected row, sheet |
-| ink | `#18181B` | `#E8E6E1` | primary text, primary controls |
-| ink-2 / ink-3 | `#45454B` / `#626269` | `#B4B2AC` / `#8E8C87` | secondary / tertiary text |
-| rule / rule-strong | `#CFCCC4` / `#9E9B93` | `#36363A` / `#5A5A5F` | hairlines only (not text, not control borders) |
-| signal-pass | `#2B6544` | `#71B28A` | confirmed, passed |
-| signal-block | `#B83A1E` | `#EE7A5E` | blocked, halted, failed |
-| signal-pending | `#855C0B` | `#D6A54C` | submitted, awaiting finality |
+- **Real data only.** Every number comes from the ledger, `config.yaml` or public RPC. Stubbed
+  components are labelled `STUB`.
+- **Data in monospace.** Amounts, hashes, IDs and timestamps use Geist Mono with tabular figures
+  (the `.data` utility). Amounts are right-aligned in tables.
+- **Status = icon + word + colour.** `success` (passed, confirmed), `warning` (pending) and `destructive`
+  (blocked, halted, failed). shadcn ships only `destructive`, so the other two are added to the theme. All three pass
+  WCAG AA as text on the page background in both themes (lowest 4.73:1). Status text is never
+  placed on the light-grey `muted` surface, where shadcn's own grey drops to 4.34:1.
+- **Signature detail.** Every ledger row shows its policy hash and a verify link. Blocked rows and rules
+  get a 2px red left rule.
+- **Motion rules** (D14): transform, opacity and clip-path only. 120–240ms; nothing over 400ms
+  except the timeline connector. Animate only real events. Reduced motion respected. View
+  transitions run from ledger row to entry.
+- **Mobile:** 44px targets on touch, the kill switch in a bottom bar within thumb reach, the entry detail as a
+  bottom sheet with drag-to-dismiss, safe areas.
 
-The paper is a cool, slightly grey ledger stock rather than warm cream, which is the generic tell.
-The dark theme is graphite with warm-white ink and desaturated signals. It is not neon on black.
-Everything that is not a status is greyscale.
+## Components (`apps/web/components/ui`)
 
-## Type
+| Kind | Components |
+|---|---|
+| Standard shadcn (copied, lightly adapted) | `button`, `card`, `badge` (+ `success`, `warning`, `danger` variants), `table` (focusable scroll region), `input`, `label`, `separator` |
+| Project components on that base | `status-badge`, `hash` (copy), `hold-button` (kill switch), `sheet` (non-modal, drag-to-dismiss), `timeline`, `code-view`, `page-header`, `PageTransition` |
 
-- **Archivo** (variable, with a width axis) for the UI. It is a grotesque with real character in its
-  narrow widths. Table headers and dense labels use width 87 (semi-condensed, instrument-panel); body
-  text uses width 100. Only weights 400 and 600.
-- **IBM Plex Mono** for every amount, hash, ID, timestamp and block height. Always right-aligned in
-  tables, with tabular figures.
-- **Five sizes, no more:** 12 / 14 / 17 / 22 / 32 px (`--text-1…5`). Labels are sentence case, never
-  tracked all-caps.
+The sheet is deliberately not Radix Dialog's modal mode: a modal makes the rest of the page
+inert, and the kill switch must stay reachable while a sheet is open.
 
-## Layout
+## Layout rule learned the hard way
 
-A 12-column grid with a 24px gutter and a max width of 1200px. Content is left-aligned. There are no
-cards: sections are separated by hairline rules and whitespace. Radii are 0 by default, 2px on
-controls and 4px on the sheet. The only shadow is the one under the mobile sheet.
-
-```
-┌ status strip ─ mainnet · intents.near │ Policy v2 · 3678ff │ ● running        [ hold to halt ] ┐
-├──────────────────────────────────────────────────────────────────────────────────────────────┤
-│ seq  time      agent       event            amount          policy        result   verify    │
-│ 0099 17:14:20  accounting  payout     0.00003 wNEAR   v2 · 3678ff   ✓ conf   nearblocks ↗   │
-│ 0098 …                                                                                       │
-```
-
-## The one memorable element
-
-A **status strip** that is always present. It holds the network, the policy version and hash, the
-run state and the kill switch. When halted, it becomes a vermilion-ruled band that reads "Halted
-17:13:48 · operator halt…" on every page at once, and the strip is the only place the
-interface raises its voice. Everything else stays quiet.
-
-## Signature detail (from the brief)
-
-Every ledger row shows its policy hash and a verify-on-explorer link. Blocked rows carry a 2px
-vermilion left rule.
-
-## Rejected defaults
-
-- **No eyebrows or icons:** no all-caps eyebrows, no "→" on buttons, no icon set. Text labels plus
-  the three status glyphs ✓ ✕ ◷ only.
-- **No cards or gradients:** no cards, shadows, gradients or glass, and no hero.
-- **No ornamental mono:** mono is never used for prose or labels, only for data.
+Grids default to `auto` columns that grow to fit their content. Every page grid, card body and
+content grid uses `grid-cols-[minmax(0,1fr)]`, and cards are `min-w-0`, so long hashes and code
+scroll or wrap inside their box instead of widening the page. Unbreakable hashes in running text
+get `overflow-wrap: anywhere`.

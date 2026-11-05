@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { LedgerEntry } from "@athera/ledger";
-import { Badge } from "../ui/Badge";
-import { Hash } from "../ui/Hash";
-import { Sheet } from "../ui/Sheet";
+import { buttonVariants } from "../ui/button";
+import { Hash } from "../ui/hash";
+import { Sheet } from "../ui/sheet";
+import { StatusBadge } from "../ui/status-badge";
 import { displayResult } from "../../lib/display";
 import { eventLabel } from "./labels";
-import styles from "./EntrySheet.module.css";
 
 type Detail = { entry: LedgerEntry; upstream: LedgerEntry[]; downstream: LedgerEntry[] };
 
@@ -35,13 +35,13 @@ export default function EntrySheet({ id, onClose }: { id: string | null; onClose
   const result = e ? displayResult(e, [e, ...(data?.downstream ?? [])]) : null;
   return (
     <Sheet open={id !== null} onClose={onClose} title={e ? `Entry ${String(e.seq).padStart(4, "0")}: ${eventLabel(e.type)}` : "Ledger entry"}>
-      {error ? <p className={styles.sheetError}>Could not load this entry ({error}).</p> : null}
-      {!e && !error ? <p className={styles.sheetMuted}>Loading…</p> : null}
+      {error ? <p className="text-destructive text-sm">Could not load this entry ({error}).</p> : null}
+      {!e && !error ? <p className="text-muted-foreground text-sm">Loading…</p> : null}
       {e && result ? (
-        <div className={styles.sheet}>
-          <p className={e.result === "block" ? styles.sheetBlocked : undefined}>{e.summary}</p>
-          <Badge kind={result.kind} label={result.label} />
-          <dl className={styles.sheetDl}>
+        <div className="grid gap-3">
+          <p className={e.result === "block" ? "border-destructive border-l-2 pl-3" : undefined}>{e.summary}</p>
+          <StatusBadge kind={result.kind} label={result.label} />
+          <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm [&_dd]:min-w-0 [&_dd]:[overflow-wrap:anywhere] [&_dt]:text-muted-foreground">
             <dt>Time</dt>
             <dd className="data">{e.ts.replace("T", " ").slice(0, 19)} UTC</dd>
             <dt>Agent</dt>
@@ -73,7 +73,7 @@ export default function EntrySheet({ id, onClose }: { id: string | null; onClose
               </>
             ) : null}
           </dl>
-          <Link href={`/ledger/${e.id}`} className={styles.sheetLink}>
+          <Link href={`/ledger/${e.id}`} className={buttonVariants({ variant: "outline", className: "mt-1 justify-self-start" })}>
             Open full entry: rules, before and after, how to verify
           </Link>
         </div>

@@ -1,32 +1,30 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import type { LedgerEntry } from "@athera/ledger";
-import { Badge } from "../ui/Badge";
-import { Row, Table, Td, Th } from "../ui/Table";
+import { StatusBadge } from "../ui/status-badge";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { displayResult } from "../../lib/display";
+import { cn } from "../../lib/utils";
 import { EntryLink } from "./EntryLink";
 import { eventLabel } from "./labels";
 import styles from "./ledger.module.css";
 
 export { eventLabel };
 
-const H = { role: "columnheader" } as const;
-const C = { role: "cell" } as const;
-
 export function LedgerHead() {
   return (
-    <thead role="rowgroup" className={styles.head}>
-      <tr role="row">
-        <Th numeric {...H}>Seq</Th>
-        <Th numeric {...H}>Time (UTC)</Th>
-        <Th {...H}>Agent</Th>
-        <Th {...H}>Event</Th>
-        <Th numeric {...H}>Amount</Th>
-        <Th {...H}>Policy</Th>
-        <Th {...H}>Result</Th>
-        <Th {...H}>Verify</Th>
-      </tr>
-    </thead>
+    <TableHeader role="rowgroup" className={styles.head}>
+      <TableRow role="row" className="hover:bg-transparent">
+        <TableHead role="columnheader" className="text-right">Seq</TableHead>
+        <TableHead role="columnheader" className="text-right">Time (UTC)</TableHead>
+        <TableHead role="columnheader">Agent</TableHead>
+        <TableHead role="columnheader">Event</TableHead>
+        <TableHead role="columnheader" className="text-right">Amount</TableHead>
+        <TableHead role="columnheader">Policy</TableHead>
+        <TableHead role="columnheader">Result</TableHead>
+        <TableHead role="columnheader">Verify</TableHead>
+      </TableRow>
+    </TableHeader>
   );
 }
 
@@ -34,63 +32,66 @@ export function LedgerHead() {
 export function LedgerRow({ e, all, fresh, index }: { e: LedgerEntry; all: readonly LedgerEntry[]; fresh?: boolean; index?: number }) {
   const result = displayResult(e, all);
   const explorer = e.refs?.explorer?.[0];
+  const blocked = e.result === "block";
   return (
-    <Row
+    <TableRow
       id={e.id}
       role="row"
-      blocked={e.result === "block"}
-      data-blocked={e.result === "block"}
-      className={fresh ? styles.fresh : undefined}
+      data-blocked={blocked}
+      className={cn(blocked && "[&>td:first-child]:shadow-[inset_2px_0_0_var(--destructive)]", fresh && styles.fresh)}
       style={index !== undefined ? ({ "--i": index } as CSSProperties) : undefined}
     >
-      <Td numeric {...C} className={styles.cSeq}>
-        <a href={`#${e.id}`} className={styles.seq} title={`Link to this row (entry ${e.seq})`}>
+      <TableCell role="cell" className={cn("data text-muted-foreground text-right", styles.cSeq)} translate="no">
+        <a href={`#${e.id}`} title={`Link to this row (entry ${e.seq})`} className="hover:text-foreground">
           {String(e.seq).padStart(4, "0")}
         </a>
-      </Td>
-      <Td numeric {...C} className={styles.cTime}>
+      </TableCell>
+      <TableCell role="cell" className={cn("data text-right", styles.cTime)} translate="no">
         {e.ts.slice(11, 19)}
-      </Td>
-      <Td {...C} className={styles.cAgent}>
+      </TableCell>
+      <TableCell role="cell" className={styles.cAgent}>
         {e.agent}
-      </Td>
-      <Td {...C} className={styles.cEvent}>
+      </TableCell>
+      <TableCell role="cell" className={cn("font-medium [&_a]:underline-offset-4 [&_a:hover]:underline", styles.cEvent)}>
         <EntryLink id={e.id} label={eventLabel(e.type)} />
-      </Td>
-      <Td numeric {...C} className={styles.cAmount}>
+      </TableCell>
+      <TableCell role="cell" className={cn("data text-right", styles.cAmount)} translate="no">
         {e.amount?.display ?? ""}
-      </Td>
-      <Td data {...C} className={`${styles.policy} ${styles.cPolicy}`}>
+      </TableCell>
+      <TableCell role="cell" className={cn("data text-muted-foreground", styles.cPolicy)} translate="no">
         v{e.policy.version} · {e.policy.hash.slice(0, 6)}
-      </Td>
-      <Td {...C} className={styles.cResult}>
-        <Badge kind={result.kind} label={result.label} />
-      </Td>
-      <Td {...C} className={styles.cVerify}>
+      </TableCell>
+      <TableCell role="cell" className={styles.cResult}>
+        <StatusBadge kind={result.kind} label={result.label} />
+      </TableCell>
+      <TableCell role="cell" className={cn("text-sm", styles.cVerify)}>
         {explorer ? (
-          <a href={explorer} target="_blank" rel="noreferrer" aria-label={`Verify entry ${e.seq} on nearblocks (opens in new tab)`}>
+          <a href={explorer} target="_blank" rel="noreferrer" className="underline underline-offset-4" aria-label={`nearblocks, verify entry ${e.seq} (opens in new tab)`}>
             nearblocks
           </a>
         ) : (
-          <Link href={`/ledger/${e.id}#verify`} className={styles.offchain}>
-            {e.result === "block" ? "nothing on-chain" : "off-chain"}
+          <Link href={`/ledger/${e.id}#verify`} className="text-muted-foreground text-xs underline underline-offset-4">
+            {blocked ? "nothing on-chain" : "off-chain"}
           </Link>
         )}
-      </Td>
-    </Row>
+      </TableCell>
+    </TableRow>
   );
 }
 
 export function LedgerTable({ caption, entries, all, live }: { caption: string; entries: readonly LedgerEntry[]; all: readonly LedgerEntry[]; live?: ReactNode }) {
   return (
-    <Table caption={caption} className={styles.ledger} explicitRoles>
-      <LedgerHead />
-      {live}
-      <tbody role="rowgroup">
-        {entries.map((e) => (
-          <LedgerRow key={e.id} e={e} all={all} />
-        ))}
-      </tbody>
-    </Table>
+    <div className={styles.ledger}>
+      <Table label={caption} role="table">
+        <TableCaption className="sr-only">{caption}</TableCaption>
+        <LedgerHead />
+        {live}
+        <TableBody role="rowgroup">
+          {entries.map((e) => (
+            <LedgerRow key={e.id} e={e} all={all} />
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

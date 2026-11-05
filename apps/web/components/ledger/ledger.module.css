@@ -1,14 +1,14 @@
 .seq {
-  color: var(--ink-3);
+  color: var(--muted-foreground);
   text-decoration: none;
 }
 .policy {
-  color: var(--ink-2);
+  color: var(--muted-foreground);
   white-space: nowrap;
 }
 .offchain {
-  color: var(--ink-3);
-  font-size: var(--text-1);
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
 }
 /* New rows (live): slide in from the top, staggered, with a fading highlight. */
 .fresh {
@@ -25,7 +25,7 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: var(--paper-sunk);
+  background: var(--muted);
   opacity: 0;
   /* Hold (no motion) ~0.9s so the eye finds the new row, then fade within the 400ms ceiling. */
   animation: row-flash var(--dur-max) ease-out both;
@@ -88,13 +88,13 @@
       "seq event result"
       "time agent amount"
       "policy policy verify";
-    gap: 2px var(--s-3);
-    padding: var(--s-3) 0;
-    border-bottom: var(--hairline);
+    gap: 2px 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
   }
   .ledger tr[data-blocked="true"] {
-    box-shadow: inset 2px 0 0 var(--signal-block);
-    padding-left: var(--s-3);
+    box-shadow: inset 2px 0 0 var(--destructive);
+    padding-left: 12px;
   }
   .ledger td {
     padding: 0 !important;
@@ -108,7 +108,7 @@
   }
   .cEvent {
     grid-area: event;
-    font-weight: var(--weight-strong);
+    font-weight: 500;
   }
   .cResult {
     grid-area: result;
@@ -116,13 +116,13 @@
   }
   .cTime {
     grid-area: time;
-    font-size: var(--text-1);
-    color: var(--ink-2);
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
   }
   .cAgent {
     grid-area: agent;
-    font-size: var(--text-1);
-    color: var(--ink-2);
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
   }
   .cAmount {
     grid-area: amount;
@@ -130,11 +130,11 @@
   }
   .cPolicy {
     grid-area: policy;
-    font-size: var(--text-1);
+    font-size: 0.75rem;
   }
   .cVerify {
     grid-area: verify;
     justify-self: end;
-    font-size: var(--text-1);
+    font-size: 0.75rem;
   }
 }

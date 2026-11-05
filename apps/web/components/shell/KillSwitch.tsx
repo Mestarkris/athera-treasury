@@ -1,16 +1,16 @@
 "use client";
 
+import { Lock, OctagonX } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
-import { HoldButton } from "../ui/HoldButton";
-import { Button } from "../ui/Button";
+import { Button } from "../ui/button";
+import { HoldButton } from "../ui/hold-button";
 import { useStatus } from "./StatusProvider";
-import styles from "./shell.module.css";
 
 // The unlock form is used once per session: load it on demand (JS budget, D13).
 const UnlockSheet = lazy(() => import("./UnlockSheet"));
 
 /** The kill switch. Hold 1.2s (or hold Enter/Space). Halting is one-way from the web. */
-export function KillSwitch({ placement }: { placement: "strip" | "bar" }) {
+export function KillSwitch() {
   const { live, operatorEnabled, token, setToken, engageHalt, halting } = useStatus();
   const [error, setError] = useState<string | null>(null);
   const [unlockOpen, setUnlockOpen] = useState(false);
@@ -18,16 +18,22 @@ export function KillSwitch({ placement }: { placement: "strip" | "bar" }) {
 
   let control;
   if (halted) {
-    control = <span className={styles.haltedLabel}>Halted</span>;
+    control = (
+      <span className="bg-destructive dark:text-background inline-flex h-9 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-white pointer-coarse:h-11">
+        <OctagonX className="size-4" aria-hidden="true" />
+        Halted
+      </span>
+    );
   } else if (!operatorEnabled) {
     control = (
-      <a className={styles.readOnly} href="/security#operator">
-        Halt from the server
-      </a>
+      <Button variant="link" size="sm" asChild>
+        <a href="/security#operator">Halt from the server</a>
+      </Button>
     );
   } else if (!token) {
     control = (
-      <Button variant="danger" onClick={() => setUnlockOpen(true)}>
+      <Button variant="outline" size="sm" onClick={() => setUnlockOpen(true)} className="text-destructive border-destructive/50">
+        <Lock aria-hidden="true" />
         Unlock kill switch
       </Button>
     );
@@ -52,11 +58,13 @@ export function KillSwitch({ placement }: { placement: "strip" | "bar" }) {
   }
 
   return (
-    <div className={`${styles.kill} ${placement === "bar" ? styles.killBar : ""}`}>
+    <div className="flex items-center gap-3">
       {control}
-      <span className={styles.killError} role="alert">
-        {error ?? ""}
-      </span>
+      {error ? (
+        <span role="alert" className="text-destructive max-w-[28ch] text-xs">
+          {error}
+        </span>
+      ) : null}
       {unlockOpen ? (
         <Suspense fallback={null}>
           <UnlockSheet onClose={() => setUnlockOpen(false)} onToken={setToken} />

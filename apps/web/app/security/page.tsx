@@ -1,9 +1,9 @@
 import { Suspense } from "react";
-import { Row, Table, Td, Th } from "../../components/ui/Table";
-import page from "../../components/ui/page.module.css";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
+import { PageHeader } from "../../components/ui/page-header";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { liveKeys } from "../../lib/keys";
 import { loadPolicy } from "../../lib/ledger";
-import styles from "./security.module.css";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Security" };
@@ -13,31 +13,33 @@ async function KeyTables() {
   return (
     <>
       {accounts.map((a) => (
-        <div key={a.account} className={styles.keys}>
-          <h3 className={styles.sub}>
+        <div key={a.account} className="grid gap-3 not-last:mb-6">
+          <h3 className="text-sm font-medium [overflow-wrap:anywhere]">
             {a.role === "treasury" ? "Treasury" : "Revenue"} <span className="data">{a.account}</span>
           </h3>
           {a.onAccount ? (
-            <Table caption={`Access keys on the NEAR account (read from public RPC at ${at.slice(11, 19)} UTC)`} dense>
-              <thead>
-                <tr>
-                  <Th>Public key</Th>
-                  <Th>Permission</Th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table label={`Access keys on ${a.account}, read from public RPC at ${at.slice(11, 19)} UTC`}>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Public key</TableHead>
+                  <TableHead>Permission</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {a.onAccount.map((k) => (
-                  <Row key={k.publicKey}>
-                    <Td data>{k.publicKey}</Td>
-                    <Td>{k.permission}</Td>
-                  </Row>
+                  <TableRow key={k.publicKey}>
+                    <TableCell className="data" translate="no">
+                      {k.publicKey}
+                    </TableCell>
+                    <TableCell>{k.permission}</TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
+              </TableBody>
             </Table>
           ) : (
-            <p className={page.muted}>RPC unavailable: could not read the account’s keys right now.</p>
+            <p className="text-muted-foreground text-sm">RPC unavailable: could not read the account’s keys right now.</p>
           )}
-          <p className={styles.verifierKeys}>
+          <p className="text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 text-xs [overflow-wrap:anywhere]">
             Keys that can sign intents for this account inside intents.near:{" "}
             {a.inVerifier ? (
               a.inVerifier.length ? (
@@ -50,7 +52,7 @@ async function KeyTables() {
                 "none"
               )
             ) : (
-              <span className={page.muted}>RPC unavailable</span>
+              <span>RPC unavailable</span>
             )}
           </p>
         </div>
@@ -62,21 +64,20 @@ async function KeyTables() {
 export default function SecurityPage() {
   const cfg = loadPolicy().config;
   return (
-    <>
-      <div className={page.head}>
-        <h1>Security</h1>
-        <p className={page.lead}>
-          Who can move value, with which key, under which checks, and what is not protected. Each claim maps to code in the repository or to a decision in{" "}
-          <span className="data">docs/decisions.md</span>.
-        </p>
-      </div>
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
+      <PageHeader
+        title="Security"
+        description="Who can move value, with which key, under which checks, and what is not protected. Each claim maps to code in the repository or to a decision in docs/decisions.md."
+      />
 
-      <section className={page.section} aria-labelledby="custody">
-        <div className={page.sectionHead}>
-          <h2 id="custody">Custody model</h2>
-          <p>No full-access key is held by any Athera process (D4, D9, D10).</p>
-        </div>
-        <div className={`${page.body} ${styles.prose}`}>
+      <Card id="custody">
+        <CardHeader>
+          <CardTitle>
+            <h2 id="custody-title">Custody model</h2>
+          </CardTitle>
+          <CardDescription>No full-access key is held by any Athera process (D4, D9, D10).</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-[minmax(0,1fr)] max-w-3xl gap-3 text-sm [&_ol]:grid [&_ol]:list-decimal [&_ol]:gap-2 [&_ol]:pl-5 [&_ul]:grid [&_ul]:list-disc [&_ul]:gap-2 [&_ul]:pl-5">
           <p>
             <strong>Treasury, {cfg.accounts.treasury}.</strong> The owner’s full-access key stays in the owner’s wallet. The runtime holds one
             function-call key that may call only <span className="data">intents.near.execute_intents</span>, with no deposit and a 0.25 NEAR gas allowance. The same
@@ -92,27 +93,31 @@ export default function SecurityPage() {
             <span className="data">pnpm keygen</span>, which prints only public keys. A pre-commit hook rejects private-key-like strings. This web server never loads
             either key: runs are started as separate processes that read <span className="data">.env</span> themselves.
           </p>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
-      <section className={page.section} aria-labelledby="live">
-        <div className={page.sectionHead}>
-          <h2 id="live">Keys right now</h2>
-          <p>Live from the chain, not from our configuration. Compare them with the claims above.</p>
-        </div>
-        <div className={page.body}>
-          <Suspense fallback={<p className={page.muted}>Reading keys from public RPC…</p>}>
+      <Card id="live">
+        <CardHeader>
+          <CardTitle>
+            <h2 id="live-title">Keys right now</h2>
+          </CardTitle>
+          <CardDescription>Live from the chain, not from our configuration. Compare them with the claims above.</CardDescription>
+        </CardHeader>
+        <CardContent className="">
+          <Suspense fallback={<p className="text-muted-foreground text-sm">Reading keys from public RPC…</p>}>
             <KeyTables />
           </Suspense>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
-      <section className={page.section} aria-labelledby="enforcement">
-        <div className={page.sectionHead}>
-          <h2 id="enforcement">Where policy is enforced</h2>
-          <p>Before any signature, in code, with tests.</p>
-        </div>
-        <div className={`${page.body} ${styles.prose}`}>
+      <Card id="enforcement">
+        <CardHeader>
+          <CardTitle>
+            <h2 id="enforcement-title">Where policy is enforced</h2>
+          </CardTitle>
+          <CardDescription>Before any signature, in code, with tests.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-[minmax(0,1fr)] max-w-3xl gap-3 text-sm [&_ol]:grid [&_ol]:list-decimal [&_ol]:gap-2 [&_ol]:pl-5 [&_ul]:grid [&_ul]:list-disc [&_ul]:gap-2 [&_ul]:pl-5">
           <ol>
             <li>
               Agents only propose. The treasury and accounting agents cannot import the signer or settlement code; a test fails if they do.
@@ -129,28 +134,32 @@ export default function SecurityPage() {
               Every check, pass or block, is written to the ledger, and <span className="data">pnpm verify</span> recomputes each one from the ledger alone.
             </li>
           </ol>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
-      <section className={page.section} aria-labelledby="operator">
-        <div className={page.sectionHead}>
-          <h2 id="operator">Operator controls</h2>
-          <p>Starting a run and engaging the kill switch.</p>
-        </div>
-        <div className={`${page.body} ${styles.prose}`}>
+      <Card id="operator">
+        <CardHeader>
+          <CardTitle>
+            <h2 id="operator-title">Operator controls</h2>
+          </CardTitle>
+          <CardDescription>Starting a run and engaging the kill switch.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-[minmax(0,1fr)] max-w-3xl gap-3 text-sm [&_ol]:grid [&_ol]:list-decimal [&_ol]:gap-2 [&_ol]:pl-5 [&_ul]:grid [&_ul]:list-disc [&_ul]:gap-2 [&_ul]:pl-5">
           <p>
             Both need the operator token (<span className="data">ATHERA_OPERATOR_TOKEN</span> on the server), sent as a request header, never a cookie. Without it
             set, the web app is read-only. Releasing a halt is not possible from the web at all: run <span className="data">pnpm halt --release</span> on the server.
           </p>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
-      <section className={page.section} aria-labelledby="limits">
-        <div className={page.sectionHead}>
-          <h2 id="limits">Known limitations</h2>
-          <p>What this MVP does not protect against, or does not do.</p>
-        </div>
-        <div className={`${page.body} ${styles.prose}`}>
+      <Card id="limits">
+        <CardHeader>
+          <CardTitle>
+            <h2 id="limits-title">Known limitations</h2>
+          </CardTitle>
+          <CardDescription>What this MVP does not protect against, or does not do.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-[minmax(0,1fr)] max-w-3xl gap-3 text-sm [&_ol]:grid [&_ol]:list-decimal [&_ol]:gap-2 [&_ol]:pl-5 [&_ul]:grid [&_ul]:list-disc [&_ul]:gap-2 [&_ul]:pl-5">
           <ul>
             <li>
               A stolen treasury runtime key can sign any intent for the treasury’s balance inside intents.near without going through our policy engine. Exposure
@@ -166,8 +175,8 @@ export default function SecurityPage() {
             <li>Keys sit in a file on the server, not in a TEE or hardware module. OutLayer agent custody was not used (D4).</li>
             <li>Public RPC providers are trusted to report chain state. Verify against more than one when it matters.</li>
           </ul>
-        </div>
-      </section>
-    </>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

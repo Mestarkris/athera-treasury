@@ -212,3 +212,25 @@ Ambiguities resolved conservatively. Newest last. Each entry: decision, reason, 
 - **Ledger paging:** 50 rows per page, with `?before=<seq>` in the URL (no virtualization needed).
 - **JS budget:** /ledger is 133 B and /demo 1.3 KB over the 140 KB target after Phase 5 features;
   escalated to the user.
+
+## D16 — Switch to a standard component look: Tailwind + shadcn/ui (2026-11-05, user decision)
+
+- **What changed:** the user chose "standard frontend": Tailwind CSS v4 and shadcn/ui with the default
+  neutral theme (light and dark, Geist fonts, cards, lucide icons). This **overrides the brief's
+  "flight recorder" art direction** (paper and ink, no cards, no generic icons, custom grotesk). The
+  previous design system is preserved in git history (commit 5590f8e).
+- **Unchanged:** behaviour, data sources and safety: the non-modal sheet (kill switch reachable),
+  hold-to-halt, live stream, the run lock, operator token, view transitions, reduced motion, the
+  44px targets and the mobile kill-switch bar. Status keeps icon + word + colour, with `success` and
+  `warning` added to shadcn's theme (AA checked by script).
+- **Removed:** the bespoke tokens, CSS modules, StatusMark and the internal `/design` reference
+  page (it documented the old system).
+- **JS cost:** first-load JS rose about 13 KB (tailwind-merge, class-variance-authority, clsx, lucide
+  icons). `/ledger` is 153.2 KB and `/demo` 154.6 KB, over D13's 140 KB. This was accepted as the price of the
+  standard stack, which the user was told beforehand.
+- **Verified after the switch:**
+  - axe-core WCAG 2.2 AA: 0 violations across 8 screens × 2 themes × 2 widths. One target-size
+    issue on the demo timeline was found and fixed.
+  - No horizontal overflow on any screen at 1280px or 390px. Several grid and long-hash overflows were found
+    and fixed (docs/design.md, "Layout rule").
+  - View-transition and phone-sheet tests pass; 84 unit tests pass.

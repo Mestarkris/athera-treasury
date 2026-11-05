@@ -1,14 +1,17 @@
+import { Braces, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import type { LedgerEntry } from "@athera/ledger";
-import { LedgerTable } from "../../components/ledger/LedgerTable";
 import { EntrySheetHost } from "../../components/ledger/EntrySheetHost";
+import { LedgerTable } from "../../components/ledger/LedgerTable";
 import { LiveRows } from "../../components/ledger/LiveRows";
 import { PageTransition } from "../../components/ui/PageTransition";
-import { Button } from "../../components/ui/Button";
-import page from "../../components/ui/page.module.css";
+import { Badge } from "../../components/ui/badge";
+import { Button, buttonVariants } from "../../components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
+import { Label } from "../../components/ui/label";
+import { PageHeader } from "../../components/ui/page-header";
 import { readLedger } from "../../lib/ledger";
-import styles from "./ledger-page.module.css";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Ledger" };
@@ -16,6 +19,10 @@ export const metadata = { title: "Ledger" };
 const TYPES: LedgerEntry["type"][] = ["policy_check", "proposal", "intent_created", "intent_submitted", "settlement", "fee", "payout", "cost", "halt", "error"];
 const AGENTS: LedgerEntry["agent"][] = ["treasury", "accounting", "policy", "settlement", "operator", "system", "procurement", "sales"];
 const PAGE = 50;
+
+// Native <select> styled like shadcn inputs: keyboard and screen-reader behaviour for free, no JS.
+const selectClass =
+  "border-input bg-background dark:bg-input/30 h-9 min-w-40 rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] pointer-coarse:h-11";
 
 type Search = { type?: string; agent?: string; run?: string; before?: string };
 
@@ -32,30 +39,59 @@ async function Rows({ search }: { search: Search }) {
   const older = fromHere.length > shown.length ? shown.at(-1)?.seq : undefined;
   const lastSeq = entries.at(-1)?.seq ?? -1;
   const qs = (extra: Record<string, string>) => `/ledger?${new URLSearchParams({ ...(type ? { type } : {}), ...(agent ? { agent } : {}), ...(run ? { run } : {}), ...extra })}`;
+  const caption = `Ledger, newest first${type ? `, event ${type.replace("_", " ")}` : ""}${agent ? `, agent ${agent}` : ""}${run ? `, run ${run}` : ""}`;
   return (
-    <>
-      <p className={styles.count}>
-        <span className="data">{filtered.length}</span> of <span className="data">{entries.length}</span> entries
-        {type || agent ? " match" : ""}. Hash chain {chain.ok ? "intact" : <strong className={styles.bad}>broken at seq {chain.seq}</strong>}.{" "}
-        <a href={`/api/ledger${type || agent ? `?${new URLSearchParams({ ...(type ? { type } : {}), ...(agent ? { agent } : {}) })}` : ""}`}>JSON</a>
-      </p>
-      <LedgerTable
-        caption={`Ledger, newest first${type ? `, event ${type.replace("_", " ")}` : ""}${agent ? `, agent ${agent}` : ""}${run ? `, run ${run}` : ""}`}
-        entries={shown}
-        all={entries}
-        live={run || before !== undefined ? undefined : <LiveRows afterSeq={lastSeq} type={type} agent={agent} />}
-      />
-      <nav className={styles.more} aria-label="Ledger pages">
-        {before !== undefined ? <Link href={qs({})}>Newest entries</Link> : null}
-        {older !== undefined ? <Link href={qs({ before: String(older) })}>Older entries</Link> : null}
-        {shown.length ? (
-          <span className={page.muted}>
-            Showing <span className="data">{String(shown.at(-1)?.seq ?? 0).padStart(4, "0")}</span>–<span className="data">{String(shown[0]?.seq ?? 0).padStart(4, "0")}</span>
+    <Card>
+      <CardHeader>
+        <CardTitle>Entries</CardTitle>
+        <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span>
+            <span className="data">{filtered.length}</span> of <span className="data">{entries.length}</span> entries{type || agent || run ? " match" : ""}
           </span>
-        ) : null}
-      </nav>
-      {filtered.length === 0 ? <p className={page.muted}>No entries match these filters.</p> : null}
-    </>
+          <Badge variant={chain.ok ? "success" : "danger"}>{chain.ok ? "Hash chain intact" : `Hash chain broken at seq ${chain.seq}`}</Badge>
+          <a
+            href={`/api/ledger${type || agent ? `?${new URLSearchParams({ ...(type ? { type } : {}), ...(agent ? { agent } : {}) })}` : ""}`}
+            className="inline-flex items-center gap-1 underline underline-offset-4"
+          >
+            <Braces className="size-3.5" aria-hidden="true" />
+            JSON
+          </a>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid grid-cols-[minmax(0,1fr)] gap-4">
+        <LedgerTable
+          caption={caption}
+          entries={shown}
+          all={entries}
+          live={run || before !== undefined ? undefined : <LiveRows afterSeq={lastSeq} type={type} agent={agent} />}
+        />
+        {filtered.length === 0 ? <p className="text-muted-foreground text-sm">No entries match these filters.</p> : null}
+        <nav aria-label="Ledger pages" className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-muted-foreground text-sm">
+            {shown.length ? (
+              <>
+                Showing <span className="data">{String(shown.at(-1)?.seq ?? 0).padStart(4, "0")}</span>–
+                <span className="data">{String(shown[0]?.seq ?? 0).padStart(4, "0")}</span>
+              </>
+            ) : null}
+          </span>
+          <div className="flex gap-2">
+            {before !== undefined ? (
+              <Link href={qs({})} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                <ChevronLeft aria-hidden="true" />
+                Newest entries
+              </Link>
+            ) : null}
+            {older !== undefined ? (
+              <Link href={qs({ before: String(older) })} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                Older entries
+                <ChevronRight aria-hidden="true" />
+              </Link>
+            ) : null}
+          </div>
+        </nav>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -64,53 +100,50 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
   const filtered = Boolean(search.type || search.agent || search.run);
   return (
     <PageTransition>
-      <div>
-      <div className={page.head}>
-        <h1>Ledger</h1>
-        <p className={page.lead}>
-          Append-only and hash-chained. Every policy check (passed and blocked), proposal, intent, settlement, fee and payout. New entries appear here as they are
-          written. Every row links to its own page.
-        </p>
-      </div>
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
+        <PageHeader
+          title="Ledger"
+          description="Append-only and hash-chained: every policy check (passed and blocked), proposal, intent, settlement, fee and payout. New entries appear as they are written, and every row links to its own page."
+        />
 
-      <form className={styles.filters} method="get" action="/ledger">
-        <label>
-          <span>Event</span>
-          <select name="type" defaultValue={search.type ?? ""}>
-            <option value="">All events</option>
-            {TYPES.map((t) => (
-              <option key={t} value={t}>
-                {t.replace("_", " ")}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span>Agent</span>
-          <select name="agent" defaultValue={search.agent ?? ""}>
-            <option value="">All agents</option>
-            {AGENTS.map((a) => (
-              <option key={a} value={a}>
-                {a}
-              </option>
-            ))}
-          </select>
-        </label>
-        {search.run ? <input type="hidden" name="run" value={search.run} /> : null}
-        <Button type="submit">Filter</Button>
-        {filtered ? (
-          <Link href="/ledger" className={styles.clear}>
-            Clear filters
-          </Link>
-        ) : null}
-      </form>
+        <form method="get" action="/ledger" className="flex flex-wrap items-end gap-3">
+          <div className="grid gap-2">
+            <Label htmlFor="filter-type">Event</Label>
+            <select id="filter-type" name="type" defaultValue={search.type ?? ""} className={selectClass}>
+              <option value="">All events</option>
+              {TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t.replace("_", " ")}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="filter-agent">Agent</Label>
+            <select id="filter-agent" name="agent" defaultValue={search.agent ?? ""} className={selectClass}>
+              <option value="">All agents</option>
+              {AGENTS.map((a) => (
+                <option key={a} value={a}>
+                  {a}
+                </option>
+              ))}
+            </select>
+          </div>
+          {search.run ? <input type="hidden" name="run" value={search.run} /> : null}
+          <Button type="submit" variant="secondary">
+            Filter
+          </Button>
+          {filtered ? (
+            <Link href="/ledger" className={buttonVariants({ variant: "ghost" })}>
+              Clear filters
+            </Link>
+          ) : null}
+        </form>
 
-      <div className={styles.table}>
-        <Suspense fallback={<p className={page.muted}>Reading the ledger…</p>}>
+        <Suspense fallback={<p className="text-muted-foreground text-sm">Reading the ledger…</p>}>
           <Rows search={search} />
         </Suspense>
-      </div>
-      <EntrySheetHost />
+        <EntrySheetHost />
       </div>
     </PageTransition>
   );
