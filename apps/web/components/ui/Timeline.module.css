@@ -1,0 +1,161 @@
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  column-gap: var(--s-3);
+  padding-bottom: var(--s-5);
+}
+.stage:last-child {
+  padding-bottom: 0;
+}
+.marker {
+  grid-column: 1;
+  grid-row: 1;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--rule-strong);
+  border-radius: 50%;
+  background: var(--paper);
+  font-family: var(--font-data);
+  font-size: var(--text-1);
+  color: var(--ink-3);
+  position: relative;
+  z-index: 1;
+}
+.glyph {
+  line-height: 1;
+}
+/* Glyph appears when its event arrives: opacity is kept under reduced motion, movement is dropped. */
+.stage:not([data-status="waiting"]) .glyph {
+  animation: glyph-in var(--dur-enter) var(--ease-out) both;
+}
+@keyframes glyph-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage:not([data-status="waiting"]) .glyph {
+    animation: fade-in var(--dur-fade) ease both;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.stage[data-status="active"] .marker {
+  border-color: var(--signal-pending);
+  color: var(--signal-pending);
+}
+.stage[data-status="done"] .marker {
+  border-color: var(--signal-pass);
+  color: var(--signal-pass);
+}
+.stage[data-status="blocked"] .marker,
+.stage[data-status="halted"] .marker {
+  border-color: var(--signal-block);
+  color: var(--signal-block);
+}
+.connector {
+  position: absolute;
+  left: 11.5px;
+  top: 24px;
+  bottom: 0;
+  width: 1px;
+  background: var(--rule);
+}
+.connectorFill {
+  position: absolute;
+  inset: 0;
+  background: var(--ink-2);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform var(--dur-stage) var(--ease-in-out);
+}
+.connectorFill[data-filled="true"] {
+  transform: scaleY(1);
+}
+.body {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  padding-top: 2px;
+}
+.head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: var(--s-3);
+}
+.name {
+  min-width: 0;
+}
+.title {
+  font-weight: var(--weight-strong);
+}
+.stage[data-status="waiting"] .title,
+.stage[data-status="skipped"] .title {
+  color: var(--ink-3);
+  font-weight: var(--weight-regular);
+}
+.state {
+  margin-left: var(--s-2);
+  word-spacing: 0.12em; /* the condensed width tightens the space glyph */
+  font-size: var(--text-1);
+  color: var(--ink-2);
+  font-variation-settings: "wdth" var(--width-condensed);
+}
+.stage[data-status="blocked"] .state,
+.stage[data-status="halted"] .state {
+  color: var(--signal-block);
+}
+.at {
+  font-size: var(--text-1);
+  white-space: nowrap;
+  color: var(--ink-3);
+}
+.detail {
+  margin-top: var(--s-1);
+  font-size: var(--text-1);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+/* Detail lines (IDs) fade in when they arrive. */
+.detail {
+  animation: fade-in var(--dur-fade) ease both;
+}
+/* Blocked: 2px left rule and a short settle (<150ms). No shake. */
+.stage[data-status="blocked"] .body {
+  box-shadow: inset 2px 0 0 var(--signal-block);
+  padding-left: var(--s-3);
+  animation: settle 140ms var(--ease-out) both;
+}
+@keyframes settle {
+  from {
+    transform: translateX(-3px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage[data-status="blocked"] .body {
+    animation: none;
+  }
+}
+
+/* Historical timelines render still: no entrance motion for events that did not just happen. */
+.timeline[data-live="false"] .glyph,
+.timeline[data-live="false"] .detail,
+.timeline[data-live="false"] .stage[data-status="blocked"] .body {
+  animation: none;
+}
+.timeline[data-live="false"] .connectorFill {
+  transition: none;
+}

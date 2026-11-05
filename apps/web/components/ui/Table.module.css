@@ -1,0 +1,57 @@
+.scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--text-2);
+}
+.caption {
+  text-align: left;
+  padding-bottom: var(--s-3);
+  font-size: var(--text-1);
+  color: var(--ink-2);
+}
+.th {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background: var(--paper);
+  padding: var(--s-2) var(--s-3);
+  border-bottom: var(--hairline-strong);
+  text-align: left;
+  font-size: var(--text-1);
+  font-weight: var(--weight-strong);
+  font-variation-settings: "wdth" var(--width-condensed);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.td {
+  padding: var(--s-2) var(--s-3);
+  border-bottom: var(--hairline);
+  vertical-align: baseline;
+}
+.dense .td,
+.dense .th {
+  padding-block: 6px;
+}
+.numeric {
+  text-align: right;
+  white-space: nowrap;
+}
+.row > .td:first-child,
+.row > .th:first-child {
+  padding-left: var(--s-3);
+}
+/* Blocked: 2px vermilion left rule (inset shadow keeps column alignment). */
+.blocked > .td:first-child {
+  box-shadow: inset 2px 0 0 var(--signal-block);
+}
+.highlight > .td {
+  background: var(--paper-sunk);
+}
+.scroll:focus-visible {
+  outline-offset: 4px;
+}

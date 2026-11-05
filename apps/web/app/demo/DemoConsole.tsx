@@ -1,0 +1,194 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { LedgerEntry } from "@athera/ledger";
+import { useStatus } from "../../components/shell/StatusProvider";
+import { Badge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
+import { Timeline, type Stage } from "../../components/ui/Timeline";
+import { STAGES, stageEntries, stagesFromRun } from "../../lib/stages";
+import styles from "./demo.module.css";
+
+type Mode = "loop" | "invalid";
+
+function detail(e: LedgerEntry | undefined) {
+  if (!e) return undefined;
+  const r = e.refs ?? {};
+  return (
+    <span className={styles.detail}>
+      <Link href={`/ledger/${e.id}`} className="data">
+        {e.id}
+      </Link>
+      {r.intent_hash ? (
+        <span className="data" title={r.intent_hash} translate="no">
+          intent {r.intent_hash.slice(0, 6)}…{r.intent_hash.slice(-4)}
+        </span>
+      ) : null}
+      {r.tx_hash ? (
+        <a href={r.explorer?.[0]} target="_blank" rel="noreferrer" className="data" title={r.tx_hash} translate="no">
+          tx {r.tx_hash.slice(0, 6)}…{r.tx_hash.slice(-4)}
+        </a>
+      ) : null}
+      {r.block_height ? <span className="data">block {r.block_height}</span> : null}
+      {e.result === "block" ? <span className={styles.blockText}>{e.summary}</span> : null}
+    </span>
+  );
+}
+
+/**
+ * Starts a real run on the server and draws the seven stages from ledger entries as they are
+ * written. A stage changes only when its entry arrives through /api/stream: no timers, no
+ * optimistic stages.
+ */
+export function DemoConsole({ lastRun, cost }: { lastRun: LedgerEntry[]; cost: { principal: string; fee: string; total: string; vendor: string } }) {
+  const { live, operatorEnabled, token, onEntry, operatorFetch } = useStatus();
+  const [runId, setRunId] = useState<string | null>(null);
+  const [mode, setMode] = useState<Mode | null>(null);
+  const [entries, setEntries] = useState<LedgerEntry[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
+  const sawLock = useRef(false);
+  // Real funds move on mainnet: the first click arms, the second (within 6s) starts.
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return;
+    const t = setTimeout(() => setArmed(false), 6000);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setArmed(false);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [armed]);
+
+  useEffect(
+    () =>
+      onEntry((e) => {
+        setEntries((xs) => (runId && e.run_id.startsWith(runId) && !xs.some((x) => x.id === e.id) ? [...xs, e] : xs));
+      }),
+    [onEntry, runId],
+  );
+
+  // The run is over when its process releases the ledger lock (after we saw it hold it).
+  if (runId && live.run?.runId === runId) sawLock.current = true;
+  const finished = Boolean(runId && sawLock.current && live.run?.runId !== runId);
+  const halted = live.killSwitch.engaged || live.killSwitch.configFlag;
+
+  const main = useMemo(() => (runId ? entries.filter((e) => e.run_id === runId) : lastRun), [entries, runId, lastRun]);
+  const reconciled = useMemo(() => (runId ? entries.filter((e) => e.run_id.startsWith(`${runId}c`)) : []), [entries, runId]);
+  const isLive = Boolean(runId);
+  const runFinished = isLive ? finished || main.some((e) => e.type === "halt" || e.type === "error") : true;
+  const { stages } = stagesFromRun(main, runFinished);
+  const found = stageEntries(main);
+  const withDetail: Stage[] = stages.map((s, i) => ({ ...s, detail: detail(found[STAGES[i]!.key]) }));
+  const current = withDetail.find((s) => s.status === "blocked" || s.status === "halted") ?? [...withDetail].reverse().find((s) => s.status === "done");
+  const announce = current ? `${current.title}: ${current.status === "done" ? "done" : current.status}` : "";
+  // Server timestamps only (first to last ledger entry of the run); the browser clock may be skewed.
+  const elapsed = main.length > 1 ? ((Date.parse(main.at(-1)!.ts) - Date.parse(main[0]!.ts)) / 1000).toFixed(1) : null;
+
+  async function start(m: Mode) {
+    setError(null);
+    setStarting(true);
+    try {
+      const res = await operatorFetch("/api/runs", { method: "POST", body: JSON.stringify({ mode: m }) });
+      const b = (await res.json().catch(() => ({}))) as { runId?: string; error?: string };
+      if (!res.ok || !b.runId) {
+        setError(b.error ?? `Could not start (HTTP ${res.status}). Check the server log in data/runs/ and that the web server is running.`);
+        return;
+      }
+      sawLock.current = false;
+      setEntries([]);
+      setMode(m);
+      setRunId(b.runId);
+    } finally {
+      setStarting(false);
+    }
+  }
+
+  const busy = starting || Boolean(live.run) || halted;
+  const locked = !operatorEnabled || !token;
+
+  return (
+    <div className={styles.console}>
+      <div className={styles.controls}>
+        <Button
+          variant="primary"
+          onClick={() => {
+            if (!armed) return setArmed(true);
+            setArmed(false);
+            void start("loop");
+          }}
+          disabled={busy || locked}
+          aria-describedby="run-cost"
+        >
+          {armed ? `Confirm: move ${cost.total} on mainnet` : "Run demo loop"}
+        </Button>
+        <Button variant="danger" onClick={() => start("invalid")} disabled={busy || locked}>
+          Trigger invalid action
+        </Button>
+        <p className={styles.hint} role="status" id="run-cost">
+          {!operatorEnabled
+            ? "Read-only deployment: runs can only be started on the server (pnpm demo)."
+            : !token
+              ? "Unlock operator controls with the kill switch control to start runs."
+              : halted
+                ? "Halted: release the kill switch on the server before starting a run."
+                : live.run
+                  ? `Run ${live.run.runId} is writing the ledger.`
+                  : armed
+                    ? `Press again within 6 seconds to send ${cost.principal} to ${cost.vendor} and collect the ${cost.fee} fee on NEAR mainnet. Escape cancels.`
+                    : `Moves ${cost.principal} to ${cost.vendor} on mainnet, then collects the ${cost.fee} fee and pays the revenue split. The invalid action tries more than the per-transaction limit and is blocked before any intent exists.`}
+        </p>
+        {error ? (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        ) : null}
+      </div>
+
+      <div className={styles.runHead}>
+        <h2>{isLive ? (mode === "invalid" ? "Invalid action" : "Demo loop") : "Last run in the ledger"}</h2>
+        <p className={styles.runMeta}>
+          {main[0] ? (
+            <>
+              Run{" "}
+              <Link href={`/ledger?run=${main[0].run_id}`} className="data">
+                {main[0].run_id}
+              </Link>
+              {elapsed ? <span>, {elapsed}s from first to last entry</span> : null}
+            </>
+          ) : isLive ? (
+            <>
+              Run <span className="data">{runId}</span> started. Waiting for its first ledger entry…
+            </>
+          ) : (
+            "No runs yet."
+          )}
+        </p>
+        {isLive && runFinished ? (
+          <p className={styles.result}>
+            {main.some((e) => e.type === "halt") ? (
+              <Badge kind="halted" label="Halted by the kill switch" />
+            ) : main.some((e) => e.result === "block") ? (
+              <Badge kind="block" label="Blocked before any intent was created. Nothing was signed." />
+            ) : main.some((e) => e.type === "error") ? (
+              <Badge kind="failed" label="Stopped with an error; see the ledger" />
+            ) : main.some((e) => e.type === "payout") ? (
+              <Badge kind="confirmed" label="Loop complete" />
+            ) : null}
+          </p>
+        ) : null}
+      </div>
+
+      {reconciled.length > 0 ? (
+        <p className={styles.reconciled}>
+          First, {reconciled.filter((e) => e.type === "fee").length} unfinished fee(s) from earlier halted runs were collected and split (
+          <Link href={`/ledger?run=${reconciled[0]!.run_id}`}>see entries</Link>).
+        </p>
+      ) : null}
+
+      <Timeline label="Loop stages" stages={withDetail} announce={announce} live={isLive} />
+    </div>
+  );
+}

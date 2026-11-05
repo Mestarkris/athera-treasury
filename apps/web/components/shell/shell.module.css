@@ -1,0 +1,237 @@
+/* Status strip: always present; the one place the interface raises its voice (halted). */
+.strip {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background: var(--paper);
+  border-bottom: var(--hairline-strong);
+  padding-top: env(safe-area-inset-top);
+}
+.stripInner {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 0 var(--page-pad);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "mark meta"
+    "nav nav";
+  align-items: center;
+  column-gap: var(--s-6);
+}
+@media (min-width: 1000px) {
+  .stripInner {
+    grid-template-columns: auto auto 1fr auto;
+    grid-template-areas: "mark nav meta kill";
+    min-height: 56px;
+  }
+}
+.mark {
+  grid-area: mark;
+  font-weight: var(--weight-strong);
+  font-variation-settings: "wdth" var(--width-condensed);
+  font-size: var(--text-3);
+  text-decoration: none;
+  padding: var(--s-3) 0;
+  white-space: nowrap;
+}
+.nav {
+  grid-area: nav;
+  display: flex;
+  gap: var(--s-1);
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 calc(var(--s-2) * -1);
+}
+.navLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 var(--s-2);
+  text-decoration: none;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.navLink[aria-current="page"] {
+  color: var(--ink);
+  font-weight: var(--weight-strong);
+  box-shadow: inset 0 -2px 0 var(--ink);
+}
+@media (hover: hover) and (pointer: fine) {
+  .navLink:hover {
+    color: var(--ink);
+  }
+}
+.meta {
+  grid-area: meta;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s-5);
+  margin: 0;
+  font-size: var(--text-1);
+  min-width: 0;
+}
+.meta > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.meta dt {
+  color: var(--ink-3);
+  font-variation-settings: "wdth" var(--width-condensed);
+}
+.meta dd {
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Narrow screens: network is in the security page; keep policy and state. */
+@media (max-width: 999px) {
+  .meta > div:first-child {
+    display: none;
+  }
+}
+.state[data-state="running"] {
+  color: var(--signal-pending);
+  font-weight: var(--weight-strong);
+}
+.state[data-state="halted"] {
+  color: var(--signal-block);
+  font-weight: var(--weight-strong);
+}
+.stripKill {
+  grid-area: kill;
+  display: none;
+}
+@media (min-width: 1000px) {
+  .stripKill {
+    display: block;
+  }
+}
+.haltBand {
+  border-top: var(--block-rule);
+  background: var(--paper-sunk);
+  color: var(--ink);
+  padding: var(--s-2) var(--page-pad);
+  font-size: var(--text-2);
+  max-width: none;
+}
+.haltBand strong {
+  color: var(--signal-block);
+}
+
+/* Mobile bottom bar: the kill switch lives in the thumb zone. */
+.bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-killswitch);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--page-pad) calc(var(--s-2) + env(safe-area-inset-bottom));
+  background: var(--paper);
+  border-top: var(--hairline-strong);
+}
+@media (min-width: 1000px) {
+  .bar {
+    display: none;
+  }
+}
+.barState {
+  font-size: var(--text-1);
+  color: var(--ink-2);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.barState[data-state="halted"] {
+  color: var(--signal-block);
+  font-weight: var(--weight-strong);
+}
+.barState[data-state="running"] {
+  color: var(--signal-pending);
+  font-weight: var(--weight-strong);
+}
+
+.kill {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+.killBar {
+  flex: none;
+}
+.killError {
+  font-size: var(--text-1);
+  color: var(--signal-block);
+  max-width: 28ch;
+}
+.killError:empty {
+  display: none;
+}
+.haltedLabel {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 var(--s-4);
+  background: var(--signal-block);
+  color: var(--on-signal);
+  font-weight: var(--weight-strong);
+  border-radius: var(--radius-1);
+}
+.readOnly {
+  font-size: var(--text-1);
+  color: var(--ink-2);
+}
+.unlock {
+  display: grid;
+  gap: var(--s-4);
+  max-width: 48ch;
+}
+.unlock p {
+  color: var(--ink-2);
+}
+.field {
+  display: grid;
+  gap: var(--s-1);
+  font-size: var(--text-1);
+  color: var(--ink-2);
+}
+.field input {
+  min-height: var(--tap);
+  padding: 0 var(--s-3);
+  border: 1px solid var(--ink-2);
+  border-radius: var(--radius-1);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 16px; /* no zoom-on-focus in iOS */
+}
+
+/* Page frame shared by every screen. */
+.main {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: var(--s-8) var(--page-pad) calc(var(--s-16) + 64px + env(safe-area-inset-bottom));
+}
+@media (min-width: 1000px) {
+  .main {
+    padding-bottom: var(--s-16);
+  }
+}
+.skip {
+  position: absolute;
+  left: var(--s-2);
+  top: -100px;
+  z-index: var(--z-toast);
+  padding: var(--s-2) var(--s-3);
+  background: var(--ink);
+  color: var(--paper);
+}
+.skip:focus {
+  top: var(--s-2);
+}

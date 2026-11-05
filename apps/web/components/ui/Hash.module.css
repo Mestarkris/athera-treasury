@@ -1,0 +1,34 @@
+.hash {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  white-space: nowrap;
+}
+.copy {
+  position: relative;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: var(--text-1);
+  color: var(--ink-3);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--rule-strong);
+  text-underline-offset: 3px;
+}
+/* Enlarge the hit area to 44px on touch without changing layout. */
+@media (pointer: coarse) {
+  .copy::before {
+    content: "";
+    position: absolute;
+    inset: -14px -10px;
+  }
+}
+.copyLabel {
+  display: inline-block;
+  transition: opacity var(--dur-fade) ease;
+}
+.copyLabel[data-copied="true"] {
+  color: var(--signal-pass);
+}

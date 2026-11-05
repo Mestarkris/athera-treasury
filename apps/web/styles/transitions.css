@@ -1,0 +1,88 @@
+/*
+ * View transitions. Transform and opacity only. Entrances 240ms ease-out, exits 160ms (faster
+ * than entrances). Directional slides are for hierarchy (ledger list ↔ entry) only.
+ */
+
+/* Shared element: row event label → entry heading. Moving element: ease-in-out. */
+::view-transition-group(.entry-morph) {
+  animation-duration: var(--dur-enter);
+  animation-timing-function: var(--ease-in-out);
+}
+::view-transition-old(.entry-morph),
+::view-transition-new(.entry-morph) {
+  animation-duration: var(--dur-enter);
+  /* text snapshots of different sizes: no stretching */
+  height: 100%;
+  object-fit: none;
+  object-position: left center;
+}
+
+/* Directional page slides (small distance: this is an instrument panel, not a carousel). */
+::view-transition-new(.page-from-right) {
+  animation: vt-in-right var(--dur-enter) var(--ease-out) both;
+}
+::view-transition-old(.page-to-left) {
+  animation: vt-out-left var(--dur-exit) var(--ease-out) both;
+}
+::view-transition-new(.page-from-left) {
+  animation: vt-in-left var(--dur-enter) var(--ease-out) both;
+}
+::view-transition-old(.page-to-right) {
+  animation: vt-out-right var(--dur-exit) var(--ease-out) both;
+}
+@keyframes vt-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+@keyframes vt-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+@keyframes vt-out-left {
+  to {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+@keyframes vt-out-right {
+  to {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+/* Policy versions: cross-fade only (lateral, no depth). */
+::view-transition-old(.policy-fade) {
+  animation: vt-fade-out var(--dur-exit) ease both;
+}
+::view-transition-new(.policy-fade) {
+  animation: vt-fade-in var(--dur-enter) ease both;
+}
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* The status strip never moves during a page transition. */
+::view-transition-group(status-strip) {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}

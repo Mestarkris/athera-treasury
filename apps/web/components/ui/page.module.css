@@ -1,0 +1,70 @@
+/* Shared page frame: a page head, then hairline-separated sections on a 12-column grid. */
+.head {
+  display: grid;
+  gap: var(--s-2);
+  max-width: 72ch;
+}
+.lead {
+  color: var(--ink-2);
+}
+.section {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--gutter);
+  row-gap: var(--s-4);
+  margin-top: var(--s-8);
+  padding-top: var(--s-6);
+  border-top: var(--hairline);
+}
+.sectionHead {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--s-1);
+  align-content: start;
+}
+.sectionHead p {
+  color: var(--ink-2);
+  max-width: 60ch;
+}
+.body {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+@media (min-width: 1000px) {
+  .sectionHead {
+    grid-column: 1 / span 3;
+  }
+  .body {
+    grid-column: 4 / -1;
+  }
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  align-items: center;
+}
+.muted {
+  color: var(--ink-3);
+}
+.note {
+  font-size: var(--text-1);
+  color: var(--ink-2);
+  max-width: 64ch;
+}
+.dl {
+  display: grid;
+  grid-template-columns: minmax(10ch, max-content) minmax(0, 1fr);
+  gap: var(--s-2) var(--s-6);
+  margin: 0;
+}
+.dl dt {
+  color: var(--ink-2);
+  font-size: var(--text-1);
+  padding-top: 2px;
+}
+.dl dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

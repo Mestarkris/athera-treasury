@@ -1,0 +1,33 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  font-size: var(--text-1);
+  font-weight: var(--weight-strong);
+  font-variation-settings: "wdth" var(--width-condensed);
+  line-height: 1;
+  white-space: nowrap;
+  word-spacing: 0.12em;
+}
+.glyph {
+  flex: none;
+}
+.pass {
+  color: var(--signal-pass);
+}
+.block {
+  color: var(--signal-block);
+}
+.pending {
+  color: var(--signal-pending);
+}
+.neutral {
+  color: var(--ink-2);
+}
+/* STUB: the one boxed badge, so a stubbed component can never pass for a real one. */
+.stub {
+  padding: 2px var(--s-1);
+  border: 1px solid var(--ink-2);
+  border-radius: var(--radius-1);
+  letter-spacing: 0.04em;
+}

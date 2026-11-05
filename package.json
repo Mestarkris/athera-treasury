@@ -1,0 +1,31 @@
+{
+  "name": "athera-treasury",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "phase1": "tsx scripts/demo/phase1.ts",
+    "demo": "tsx scripts/demo/run.ts",
+    "halt": "tsx scripts/demo/halt.ts",
+    "prepare": "git config core.hooksPath .githooks",
+    "keygen": "tsx scripts/demo/keygen.ts",
+    "preflight": "tsx scripts/demo/preflight.ts",
+    "setup:wallet": "pnpm --filter @athera/wallet-setup start",
+    "verify": "tsx scripts/demo/verify-ledger.ts",
+    "demo:halt": "tsx scripts/demo/run.ts --halt",
+    "web:build": "pnpm --filter @athera/web build",
+    "web:start": "pnpm --filter @athera/web start --hostname 127.0.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.1",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}

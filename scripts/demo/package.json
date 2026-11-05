@@ -1,0 +1,14 @@
+{
+  "name": "@athera/demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@athera/agents": "workspace:*",
+    "@athera/ledger": "workspace:*",
+    "@athera/policy": "workspace:*",
+    "@athera/settlement": "workspace:*",
+    "yaml": "2.9.1",
+    "@scure/base": "2.4.0"
+  }
+}

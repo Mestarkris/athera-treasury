@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "packages/*/src",
+    "packages/*/test",
+    "scripts/**/*.ts"
+  ],
+  "exclude": [
+    "scripts/wallet-setup/main.ts"
+  ]
+}

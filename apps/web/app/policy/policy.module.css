@@ -1,0 +1,37 @@
+.history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s-6);
+}
+.version {
+  display: grid;
+  gap: var(--s-2);
+}
+.versionHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-3);
+  align-items: baseline;
+}
+.diff {
+  margin: 0;
+  padding: var(--s-3);
+  background: var(--paper-sunk);
+  border-top: var(--hairline);
+  border-bottom: var(--hairline);
+  font-size: var(--text-1);
+  line-height: 1.6;
+  overflow-x: auto;
+}
+/* Diff lines: greyscale plus the two signals, with +/- kept as text so colour is not the only cue. */
+.add {
+  color: var(--signal-pass);
+}
+.del {
+  color: var(--signal-block);
+}
+.hunk {
+  color: var(--ink-3);
+}

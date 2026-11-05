@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Athera setup</title>
+    <style>
+      :root { --paper: #f4f2ee; --ink: #16161a; --mute: #5d5b57; --rule: #d6d2ca; --pass: #2f6b47; --block: #c2401f; --pending: #8a6510; color-scheme: light; }
+      body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 ui-sans-serif, system-ui, sans-serif; }
+      main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+      h1 { font-size: 20px; margin: 0 0 4px; }
+      p { margin: 0 0 12px; color: var(--mute); }
+      code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; font-variant-numeric: tabular-nums; }
+      .step { display: grid; grid-template-columns: 28px 1fr auto; gap: 12px; padding: 16px 0; border-top: 1px solid var(--rule); align-items: start; }
+      .n { font-family: ui-monospace, monospace; color: var(--mute); }
+      .what { font-weight: 600; }
+      .detail { color: var(--mute); font-size: 13px; margin-top: 4px; }
+      .state { font-family: ui-monospace, monospace; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+      .done { color: var(--pass); } .todo { color: var(--pending); } .bad { color: var(--block); }
+      button { font: inherit; padding: 8px 14px; min-height: 40px; border: 1px solid var(--ink); background: var(--ink); color: var(--paper); border-radius: 2px; cursor: pointer; }
+      button[disabled] { opacity: .35; cursor: default; }
+      button:focus-visible { outline: 2px solid var(--pending); outline-offset: 2px; }
+      #log { white-space: pre-wrap; border-top: 1px solid var(--rule); padding-top: 12px; margin-top: 16px; }
+      .bar { display: flex; gap: 12px; align-items: center; margin: 16px 0; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Athera Treasury · one-time custody setup</h1>
+      <p>NEAR <strong>mainnet</strong>. Each step is a transaction you review and approve in your own wallet. This page never sees your key.</p>
+      <div class="bar"><button id="connect">Connect Meteor</button><span id="who" class="mono"></span></div>
+      <div id="steps"></div>
+      <div id="log" class="mono" aria-live="polite"></div>
+    </main>
+    <script>
+      // Classic script: runs even if the module graph below fails to load or evaluate.
+      (function () {
+        function send(line) { try { fetch("/api/client-log", { method: "POST", body: line }); } catch (e) {} }
+        function show(line) { var el = document.getElementById("log"); if (el) el.textContent = line + "\n" + el.textContent; }
+        window.addEventListener("error", function (ev) {
+          var msg = "boot error: " + (ev.error && ev.error.stack ? ev.error.stack : ev.message || (ev.target && ev.target.src) || "unknown");
+          send(msg); show(msg);
+        }, true);
+        window.addEventListener("unhandledrejection", function (ev) {
+          var r = ev.reason; var msg = "boot rejection: " + (r && r.stack ? r.stack : String(r));
+          send(msg); show(msg);
+        });
+        // Mirror console output (including Meteor's own logging) to the local server.
+        ["log", "info", "warn", "error"].forEach(function (lvl) {
+          var orig = console[lvl].bind(console);
+          console[lvl] = function () {
+            orig.apply(null, arguments);
+            try {
+              var parts = Array.prototype.map.call(arguments, function (a) {
+                if (a instanceof Error) return a.stack || a.message;
+                if (typeof a === "object") { try { return JSON.stringify(a, function (k, v) { return typeof v === "bigint" ? v.toString() : v; }).slice(0, 1500); } catch (e) { return String(a); } }
+                return String(a);
+              });
+              send("console." + lvl + ": " + parts.join(" ").slice(0, 3000));
+            } catch (e) {}
+          };
+        });
+        send("boot: html loaded");
+      })();
+    </script>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

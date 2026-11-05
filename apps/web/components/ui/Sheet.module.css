@@ -1,0 +1,118 @@
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sheet);
+  pointer-events: none;
+}
+.scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim);
+  pointer-events: auto;
+  opacity: 1;
+  transition: opacity var(--dur-fade) ease;
+  @starting-style {
+    opacity: 0;
+  }
+}
+.scrim[data-closing="true"] {
+  opacity: 0;
+}
+.panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* Narrow screens: sit above the kill-switch bar, which stays on top and reachable. */
+  bottom: calc(var(--bar-h) + env(safe-area-inset-bottom, 0px));
+  max-height: calc(88dvh - var(--bar-h));
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border-radius: var(--radius-2) var(--radius-2) 0 0;
+  box-shadow: var(--sheet-shadow);
+  pointer-events: auto;
+  transform: translate3d(0, 0, 0);
+  transition: transform var(--dur-enter) var(--ease-drawer);
+  @starting-style {
+    transform: translate3d(0, 100%, 0);
+  }
+}
+.panel[data-closing="true"] {
+  transform: translate3d(0, 100%, 0) !important;
+  transition: transform var(--dur-exit) var(--ease-out) !important;
+}
+.grip {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--page-pad) var(--s-3);
+  border-bottom: var(--hairline);
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+.handle {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--rule-strong);
+}
+.title {
+  font-size: var(--text-3);
+}
+.close {
+  min-height: var(--tap);
+  padding: 0 var(--s-2);
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--rule-strong);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.content {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--s-4) var(--page-pad) var(--s-6);
+}
+/* Wide screens: a right-hand panel, no drag. */
+@media (min-width: 1000px) {
+  .panel {
+    left: auto;
+    top: 0;
+    bottom: 0;
+    width: min(560px, 50vw);
+    max-height: none;
+    border-radius: 0;
+    box-shadow: -1px 0 0 var(--rule);
+    transform: translate3d(0, 0, 0);
+    @starting-style {
+      transform: translate3d(100%, 0, 0);
+    }
+  }
+  .panel[data-closing="true"] {
+    transform: translate3d(100%, 0, 0) !important;
+  }
+  .handle {
+    display: none;
+  }
+  .grip {
+    cursor: default;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .panel[data-closing="true"] {
+    transition: none !important;
+  }
+}
+
+/* The panel takes programmatic focus on open; show a ring only for keyboard focus. */
+.panel:focus:not(:focus-visible) {
+  outline: none;
+}

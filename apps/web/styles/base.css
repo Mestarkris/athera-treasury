@@ -1,0 +1,138 @@
+@import "./tokens.css";
+@import "./transitions.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%; /* no font inflation in landscape */
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent; /* every control has its own :active instead */
+}
+
+/* Controls (not content): no 300ms double-tap wait, no long-press text selection or callout. */
+button,
+[role="button"],
+select,
+summary {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+a {
+  touch-action: manipulation;
+}
+
+/* Inputs at 16px minimum so iOS never zooms the page on focus. */
+input,
+textarea,
+select {
+  font-size: max(16px, 1em);
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-2);
+  line-height: var(--leading-body);
+  font-variation-settings: "wdth" var(--width-normal);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
+}
+
+/* Anchored rows (/ledger#id) and keyboard focus must not land under the sticky strip or the
+   mobile kill-switch bar. */
+html {
+  scroll-padding-top: 120px;
+  scroll-padding-bottom: calc(var(--bar-h) + 16px);
+}
+@media (min-width: 1000px) {
+  html {
+    scroll-padding-top: 80px;
+    scroll-padding-bottom: 16px;
+  }
+}
+/* Mouse/trackpad: no page rubber-band. Touch keeps pull-to-refresh. */
+@media (pointer: fine) {
+  html {
+    overscroll-behavior: none;
+  }
+}
+
+h1 {
+  font-size: var(--text-5);
+  line-height: var(--leading-tight);
+  font-weight: var(--weight-strong);
+  letter-spacing: -0.015em;
+}
+
+h2 {
+  font-size: var(--text-4);
+  line-height: var(--leading-tight);
+  font-weight: var(--weight-strong);
+}
+
+h3 {
+  font-size: var(--text-3);
+  line-height: var(--leading-tight);
+  font-weight: var(--weight-strong);
+}
+
+a {
+  color: inherit;
+  text-decoration-color: var(--rule-strong);
+  text-underline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  a:hover {
+    text-decoration-color: currentColor;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Data: amounts, hashes, IDs, timestamps, block heights. */
+.data {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums slashed-zero;
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+::selection {
+  background: var(--ink);
+  color: var(--paper);
+}

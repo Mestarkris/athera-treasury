@@ -1,0 +1,20 @@
+{
+  "name": "@athera/wallet-setup",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@athera/policy": "workspace:*",
+    "@athera/settlement": "workspace:*",
+    "@near-wallet-selector/core": "10.1.4",
+    "@near-wallet-selector/meteor-wallet": "10.1.4",
+    "vite": "8.3.4",
+    "@near-js/crypto": "2.5.1",
+    "@near-js/transactions": "2.5.1",
+    "buffer": "6.0.3",
+    "@scure/base": "2.4.0"
+  },
+  "scripts": {
+    "start": "tsx server.ts"
+  }
+}

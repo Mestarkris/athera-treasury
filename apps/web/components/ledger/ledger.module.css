@@ -1,0 +1,140 @@
+.seq {
+  color: var(--ink-3);
+  text-decoration: none;
+}
+.policy {
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.offchain {
+  color: var(--ink-3);
+  font-size: var(--text-1);
+}
+/* New rows (live): slide in from the top, staggered, with a fading highlight. */
+.fresh {
+  animation: row-in var(--dur-enter) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * var(--stagger));
+}
+/* Highlight = a pseudo-element whose OPACITY fades (no background animation). */
+.fresh > td {
+  position: relative;
+  isolation: isolate;
+}
+.fresh > td::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--paper-sunk);
+  opacity: 0;
+  /* Hold (no motion) ~0.9s so the eye finds the new row, then fade within the 400ms ceiling. */
+  animation: row-flash var(--dur-max) ease-out both;
+  animation-delay: calc(900ms + var(--i, 0) * var(--stagger));
+}
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@keyframes row-flash {
+  from {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fresh {
+    animation: fade 160ms ease both;
+  }
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.cEvent a {
+  white-space: nowrap;
+}
+
+/* Narrow screens: each row becomes a compact three-line record. Roles keep table semantics. */
+@media (max-width: 699px) {
+  .ledger table,
+  .ledger thead,
+  .ledger tbody,
+  .ledger tr,
+  .ledger th,
+  .ledger td {
+    display: block;
+  }
+  .ledger table {
+    min-width: 0;
+  }
+  .ledger caption {
+    display: block;
+    width: auto;
+  }
+  .head {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .ledger tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "seq event result"
+      "time agent amount"
+      "policy policy verify";
+    gap: 2px var(--s-3);
+    padding: var(--s-3) 0;
+    border-bottom: var(--hairline);
+  }
+  .ledger tr[data-blocked="true"] {
+    box-shadow: inset 2px 0 0 var(--signal-block);
+    padding-left: var(--s-3);
+  }
+  .ledger td {
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    text-align: left;
+    min-width: 0;
+  }
+  .cSeq {
+    grid-area: seq;
+  }
+  .cEvent {
+    grid-area: event;
+    font-weight: var(--weight-strong);
+  }
+  .cResult {
+    grid-area: result;
+    justify-self: end;
+  }
+  .cTime {
+    grid-area: time;
+    font-size: var(--text-1);
+    color: var(--ink-2);
+  }
+  .cAgent {
+    grid-area: agent;
+    font-size: var(--text-1);
+    color: var(--ink-2);
+  }
+  .cAmount {
+    grid-area: amount;
+    justify-self: end;
+  }
+  .cPolicy {
+    grid-area: policy;
+    font-size: var(--text-1);
+  }
+  .cVerify {
+    grid-area: verify;
+    justify-self: end;
+    font-size: var(--text-1);
+  }
+}
