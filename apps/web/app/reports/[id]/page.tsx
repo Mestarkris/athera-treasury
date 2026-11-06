@@ -140,20 +140,20 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
           </CardHeader>
           <CardContent>
             <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-3">
-              <Field label="Price">${r.price_usd}, checked against the policy's price bounds{offer ? <> (<Link href={`/ledger/${offer}`} className="data underline underline-offset-4">{offer}</Link>)</> : null}</Field>
+              <Field label="Price">${r.price_usd}, checked against the policy's price bounds{offer ? <> (<Link href={`/ledger/${offer}`} className="data inline-flex min-h-6 items-center underline underline-offset-4">{offer}</Link>)</> : null}</Field>
               <Field label="Paid by">
                 <span className="data">{r.customer}</span>
               </Field>
               <Field label="Payment">
                 {sale ? (
-                  <Link href={`/ledger/${sale}`} className="data underline underline-offset-4">
+                  <Link href={`/ledger/${sale}`} className="data inline-flex min-h-6 items-center underline underline-offset-4">
                     {sale}
                   </Link>
                 ) : (
                   "not in this ledger"
                 )}
                 {r.payment?.near_tx_hashes.map((h) => (
-                  <a key={h} href={`https://nearblocks.io/txns/${h}`} target="_blank" rel="noreferrer" className="data block underline underline-offset-4" title={h}>
+                  <a key={h} href={`https://nearblocks.io/txns/${h}`} target="_blank" rel="noreferrer" className="data flex min-h-6 items-center underline underline-offset-4" title={h}>
                     tx {h.slice(0, 6)}…{h.slice(-4)}
                   </a>
                 ))}
@@ -167,7 +167,7 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
                   <>
                     {" "}
                     (
-                    <Link href={`/ledger/${cost}`} className="data underline underline-offset-4">
+                    <Link href={`/ledger/${cost}`} className="data inline-flex min-h-6 items-center underline underline-offset-4">
                       {cost}
                     </Link>
                     )

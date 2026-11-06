@@ -1,4 +1,4 @@
-import { Check, Clock, Minus, OctagonX, X } from "lucide-react";
+import { Check, Minus, OctagonX, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "../../lib/utils";
 
@@ -13,15 +13,15 @@ export interface Stage {
   at?: string;
 }
 
-const ICON = { waiting: null, active: Clock, done: Check, blocked: X, halted: OctagonX, skipped: Minus } as const;
+const ICON = { waiting: null, active: null, done: Check, blocked: X, halted: OctagonX, skipped: Minus } as const;
 const WORD: Record<StageStatus, string> = { waiting: "Waiting", active: "In progress", done: "Done", blocked: "Blocked", halted: "Halted", skipped: "Not reached" };
 const MARKER: Record<StageStatus, string> = {
-  waiting: "border-border text-muted-foreground",
-  active: "border-warning text-warning",
-  done: "border-success bg-success/10 text-success",
-  blocked: "border-destructive bg-destructive/10 text-destructive",
-  halted: "border-destructive bg-destructive/10 text-destructive",
-  skipped: "border-border text-muted-foreground",
+  waiting: "border-[1.5px] border-muted-foreground/70 text-muted-foreground",
+  active: "border-0 bg-pending-dot text-black animate-[breathe_1.6s_ease-in-out_infinite] motion-reduce:animate-none",
+  done: "border-0 bg-pass-dot text-black",
+  blocked: "border-0 bg-block-dot text-black",
+  halted: "border-0 bg-block-dot text-black",
+  skipped: "border-[1.5px] border-dashed border-muted-foreground/50 text-muted-foreground",
 };
 
 /**
@@ -38,14 +38,14 @@ export function Timeline({ stages, label, announce, live = false }: { stages: St
           const Icon = ICON[s.status];
           const muted = s.status === "waiting" || s.status === "skipped";
           return (
-            <li key={s.key} className="relative grid grid-cols-[28px_1fr] gap-x-3 pb-5 last:pb-0">
-              <span className={cn("relative z-[1] flex size-7 items-center justify-center rounded-full border bg-background", MARKER[s.status])} aria-hidden="true">
-                {Icon ? <Icon className={cn("size-3.5", live && "animate-in fade-in zoom-in-75 duration-200 motion-reduce:zoom-in-100")} /> : null}
+            <li key={s.key} className="relative grid grid-cols-[24px_1fr] gap-x-3 pb-6 last:pb-0">
+              <span className={cn("relative z-[1] mt-0.5 flex size-6 items-center justify-center rounded-full bg-background", MARKER[s.status])} aria-hidden="true">
+                {Icon ? <Icon strokeWidth={3} className={cn("size-3", live && "animate-in fade-in zoom-in-75 duration-200 motion-reduce:zoom-in-100")} /> : null}
               </span>
               {next ? (
-                <span aria-hidden="true" className="bg-border absolute top-7 bottom-0 left-[13.5px] w-px">
+                <span aria-hidden="true" className="bg-border absolute top-[26px] bottom-0 left-[11.5px] w-px">
                   <span
-                    className="bg-foreground/60 absolute inset-0 origin-top"
+                    className="bg-foreground/50 absolute inset-0 origin-top"
                     style={{ transform: `scaleY(${connected ? 1 : 0})`, transition: live ? "transform var(--dur-stage) var(--ease-in-out)" : "none" }}
                   />
                 </span>
@@ -62,7 +62,7 @@ export function Timeline({ stages, label, announce, live = false }: { stages: St
                     <span className={cn("font-medium", muted && "text-muted-foreground font-normal")}>{s.title}</span>
                     <span className={cn("text-muted-foreground ml-2 text-xs", (s.status === "blocked" || s.status === "halted") && "text-destructive")}>{WORD[s.status]}</span>
                   </span>
-                  {s.at ? <span className="data text-muted-foreground text-xs whitespace-nowrap">{s.at}</span> : null}
+                  {s.at ? <span className="num text-muted-foreground text-xs whitespace-nowrap">{s.at}</span> : null}
                 </div>
                 {s.detail ? (
                   <div className={cn("text-muted-foreground mt-1 text-xs [overflow-wrap:anywhere]", live && "animate-in fade-in duration-150")}>{s.detail}</div>

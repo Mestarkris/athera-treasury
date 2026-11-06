@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import type { LedgerEntry } from "@athera/ledger";
+import { Badge } from "../ui/badge";
 import { StatusBadge } from "../ui/status-badge";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { displayResult } from "../../lib/display";
@@ -38,7 +39,7 @@ export function LedgerRow({ e, all, fresh, index }: { e: LedgerEntry; all: reado
       id={e.id}
       role="row"
       data-blocked={blocked}
-      className={cn(blocked && "[&>td:first-child]:shadow-[inset_2px_0_0_var(--destructive)]", fresh && styles.fresh)}
+      className={cn(blocked && "[&>td:first-child]:shadow-[inset_2px_0_0_var(--block-dot)]", fresh && styles.fresh)}
       style={index !== undefined ? ({ "--i": index } as CSSProperties) : undefined}
     >
       <TableCell role="cell" className={cn("data text-muted-foreground text-right", styles.cSeq)} translate="no">
@@ -46,16 +47,16 @@ export function LedgerRow({ e, all, fresh, index }: { e: LedgerEntry; all: reado
           {String(e.seq).padStart(4, "0")}
         </a>
       </TableCell>
-      <TableCell role="cell" className={cn("data text-right", styles.cTime)} translate="no">
+      <TableCell role="cell" className={cn("num text-right", styles.cTime)} translate="no">
         {e.ts.slice(11, 19)}
       </TableCell>
       <TableCell role="cell" className={styles.cAgent}>
-        {e.agent}
+        <Badge variant="secondary">{e.agent}</Badge>
       </TableCell>
       <TableCell role="cell" className={cn("font-medium [&_a]:underline-offset-4 [&_a:hover]:underline", styles.cEvent)}>
         <EntryLink id={e.id} label={eventLabel(e.type)} />
       </TableCell>
-      <TableCell role="cell" className={cn("data text-right", styles.cAmount)} translate="no">
+      <TableCell role="cell" className={cn("num text-right", styles.cAmount)} translate="no">
         {e.amount?.display ?? ""}
       </TableCell>
       <TableCell role="cell" className={cn("data text-muted-foreground", styles.cPolicy)} translate="no">

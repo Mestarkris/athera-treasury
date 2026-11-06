@@ -11,11 +11,17 @@ export default function DemoPage() {
   const { entries } = readLedger();
   // The most recent run that started with a treasury proposal (skip reconcile-only runs).
   // Prefer the most recent complete loop (it shows all seven stages); fall back to the latest run.
+  // A report written by a later retry belongs to its sale's run: show the sale run plus that
+  // report's entries, so the sale stages read in full.
+  const lastReport = entries.findLast((e) => e.type === "report");
+  const saleOfReport = lastReport ? entries.find((e) => e.type === "sale" && lastReport.upstream?.includes(e.id)) : undefined;
   const lastRunId =
-    entries.findLast((e) => e.type === "report")?.run_id ??
+    saleOfReport?.run_id ??
     entries.findLast((e) => e.type === "payout" && entries.some((x) => x.run_id === e.run_id && x.type === "proposal" && x.agent === "treasury"))?.run_id ??
     entries.findLast((e) => e.type === "proposal" && (e.agent === "treasury" || e.agent === "sales"))?.run_id;
-  const lastRun = lastRunId ? entries.filter((e) => e.run_id === lastRunId) : [];
+  const lastRun = lastRunId
+    ? entries.filter((e) => e.run_id === lastRunId || (saleOfReport && lastReport && e.run_id === lastReport.run_id && e.run_id !== lastRunId && (e.type === "cost" || e.type === "report" || e.upstream?.includes(saleOfReport.id))))
+    : [];
   // Same figures scripts/demo/run.ts uses: 0.01 of the first approved asset, fee per policy.
   const cfg = loadPolicy().config;
   const asset = cfg.approved.assets[0] ?? "";

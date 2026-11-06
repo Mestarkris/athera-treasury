@@ -1,0 +1,343 @@
+/* Control-room hero (design system §4.3). Only transform, opacity and clip-path animate. */
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin-inline: calc(50% - 50vw);
+  margin-top: -40px;
+  min-height: 850px;
+  padding: 160px var(--pad-x) 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+@media (max-width: 1199px) {
+  .hero {
+    min-height: 800px;
+    padding: 140px var(--pad-x) 210px;
+  }
+}
+@media (max-width: 809px) {
+  .hero {
+    margin-top: -24px;
+    min-height: 760px;
+    padding: 150px var(--pad-x) 200px;
+  }
+}
+
+/* — Policy boundary lines — */
+.lines {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.side,
+.top {
+  position: absolute;
+}
+.side {
+  top: 6%;
+  bottom: 6%;
+  width: 260px;
+}
+.left {
+  left: 0;
+}
+.right {
+  right: 0;
+}
+.top {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 210px;
+  display: none;
+}
+@media (max-width: 809px) {
+  .side {
+    display: none;
+  }
+  .top {
+    display: block;
+  }
+}
+
+.line {
+  position: absolute;
+  border: 2.5px solid var(--line-arc);
+  opacity: 0;
+  will-change: opacity, transform;
+  animation: line-pulse var(--dur-pulse) ease-in-out infinite;
+  transition: border-color 200ms var(--ease-out);
+}
+.left .line {
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-left: 0;
+  border-radius: 0 80% 80% 0 / 0 50% 50% 0;
+  transform-origin: left center;
+}
+.right .line {
+  right: 0;
+  top: 0;
+  bottom: 0;
+  border-right: 0;
+  border-radius: 80% 0 0 80% / 50% 0 0 50%;
+  transform-origin: right center;
+}
+.top .line {
+  left: 6%;
+  right: 6%;
+  top: 0;
+  border-top: 0;
+  border-radius: 0 0 50% 50% / 0 0 80% 80%;
+  transform-origin: center top;
+}
+
+@keyframes line-pulse {
+  0% {
+    opacity: 0;
+    transform: scale(1);
+  }
+  15% {
+    opacity: 0.9;
+  }
+  70% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+
+/* Off-screen: stop the 40 animations (battery). */
+.lines[data-paused="true"] .line {
+  animation-play-state: paused;
+}
+
+/* A policy block arrived: the three innermost lines flash once in the block colour. */
+.lines[data-flash="true"] .inner {
+  animation: line-block 600ms var(--ease-out) 1;
+  border-color: var(--block-dot);
+}
+@keyframes line-block {
+  0% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Halted: the pulse stops and every line holds, locked, in the block colour. */
+.lines[data-halted="true"] .line {
+  animation: none;
+  opacity: 0.5;
+  transform: none;
+  border-color: color-mix(in srgb, var(--block-dot) 40%, transparent);
+}
+
+/* — Ticker — */
+.ticker {
+  width: 100%;
+  max-width: 500px;
+  height: 36px;
+  overflow: hidden;
+  margin-bottom: 28px;
+  mask-image: linear-gradient(90deg, transparent 0%, black 12%, black 88%, transparent 100%);
+  border-radius: var(--r-pill);
+  outline-offset: 4px;
+}
+.track {
+  display: flex;
+  width: max-content;
+  gap: 8px;
+  animation: marquee-left var(--dur-marquee) linear infinite;
+}
+.ticker:hover .track,
+.ticker:focus-visible .track,
+.ticker:focus-within .track {
+  animation-play-state: paused;
+}
+@keyframes marquee-left {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 6px 14px;
+  border-radius: var(--r-pill);
+  background: var(--surface-1);
+  color: var(--muted-text);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.chip b {
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* — Type — */
+.title {
+  max-width: 920px;
+  font-size: 82px;
+  line-height: 1.03;
+  font-weight: 600;
+  letter-spacing: var(--track-display);
+  margin: 0;
+}
+.title em {
+  font-family: var(--font-serif4), Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: var(--track-serif);
+}
+@media (max-width: 1199px) {
+  .title {
+    font-size: clamp(60px, 8vw, 72px);
+  }
+}
+@media (max-width: 809px) {
+  .title {
+    font-size: clamp(40px, 12vw, 52px);
+  }
+}
+.subtitle {
+  max-width: 476px;
+  margin: 24px 0 0;
+  color: var(--muted-text);
+  font-size: 17px;
+  line-height: 1.45;
+  letter-spacing: var(--track-body);
+}
+
+/* — CTAs — */
+.ctas {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-top: 36px;
+}
+@media (max-width: 809px) {
+  .ctas {
+    flex-direction: column;
+    width: 100%;
+    max-width: 320px;
+  }
+  .ctas > * {
+    width: 100%;
+  }
+}
+.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 56px;
+  padding: 18px 30px;
+  border-radius: var(--r-pill);
+  background: var(--button-bg);
+  color: var(--button-text);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: var(--track-body);
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.book {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  height: 56px;
+  padding: 8px 24px 8px 8px;
+  border-radius: var(--r-pill);
+  background: var(--bg);
+  border: 4px solid var(--surface-2);
+  text-align: left;
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .primary:hover,
+  .book:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--lift-shadow);
+  }
+}
+.primary:active,
+.book:active {
+  transform: translateY(0) scale(0.98);
+  transition-duration: 100ms;
+}
+.mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-pill);
+  background: var(--button-bg);
+  color: var(--button-text);
+  flex-shrink: 0;
+}
+.bookText {
+  display: grid;
+  line-height: 1.2;
+}
+.bookTitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+.bookSub {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted-2);
+}
+
+/* — Progressive fade into the ledger — */
+.fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 178px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--bg) 40%, transparent) 40%, var(--bg));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track {
+    animation: none;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: auto;
+  }
+  .ticker {
+    height: auto;
+    mask-image: none;
+  }
+  .dupe {
+    display: none;
+  }
+  .line {
+    animation: none;
+    opacity: 0.35;
+  }
+}

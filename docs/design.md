@@ -1,41 +1,49 @@
-# Design: shadcn/ui on Tailwind CSS
+# Design: the Athera design system
 
-Since D16 the web console uses a standard component look: Tailwind CSS v4 plus shadcn/ui, with
-the shadcn default "neutral" theme in light and dark (following the OS), Geist and Geist Mono,
-cards, and lucide icons. The earlier bespoke "flight recorder" direction was replaced at the
-user's request. Git history keeps it, for reference.
+Since D19 the console follows [ATHERA_DESIGN_SYSTEM.md](ATHERA_DESIGN_SYSTEM.md): a monochrome look
+with Inter at tight tracking, one Source Serif 4 italic word per view, pill controls, soft surfaces
+and hairlines in place of cards. It still runs on Tailwind CSS v4 and the shadcn primitives (D16),
+re-themed: the doc's tokens live in `apps/web/app/globals.css`, the shadcn variable names are mapped
+onto them, and Tailwind's default palette, radius scale and shadows are switched off
+(`--color-*: initial`), as the doc's §6.7 allows.
 
-## What stayed, because it carries meaning
+## What carries meaning
 
-- **Real data only.** Every number comes from the ledger, `config.yaml` or public RPC. Stubbed
-  components are labelled `STUB`.
-- **Data in monospace.** Amounts, hashes, IDs and timestamps use Geist Mono with tabular figures
-  (the `.data` utility). Amounts are right-aligned in tables.
-- **Status = icon + word + colour.** `success` (passed, confirmed), `warning` (pending) and `destructive`
-  (blocked, halted, failed). shadcn ships only `destructive`, so the other two are added to the theme. All three pass
-  WCAG AA as text on the page background in both themes (lowest 4.73:1). Status text is never
-  placed on the light-grey `muted` surface, where shadcn's own grey drops to 4.34:1.
-- **Signature detail.** Every ledger row shows its policy hash and a verify link. Blocked rows and rules
-  get a 2px red left rule.
-- **Motion rules** (D14): transform, opacity and clip-path only. 120–240ms; nothing over 400ms
-  except the timeline connector. Animate only real events. Reduced motion respected. View
-  transitions run from ledger row to entry.
-- **Mobile:** 44px targets on touch, the kill switch in a bottom bar within thumb reach, the entry detail as a
-  bottom sheet with drag-to-dismiss, safe areas.
+- **Real data only.** Every number, chip and status comes from the ledger, `config.yaml` or public
+  RPC. The hero ticker is built from the live policy; nothing is hard-coded. Stubs are labelled `STUB`.
+- **Signals.** Green, vermilion and amber dots (`--pass-dot`, `--block-dot`, `--pending-dot`) are fills
+  only; readable labels use the darker `--*-text` variants, re-checked for AA in both themes.
+  Status is always dot + word.
+- **Type.** Inter with tabular figures (`.num`) for amounts, limits and times; JetBrains Mono
+  (`.data`) only for hashes and IDs; the serif italic (`.serif-accent`) for the wordmark and one
+  accent word ("*policy*" in the hero).
+- **Policy boundary.** The hero's 20 + 20 pulsing arcs are the constraint the agents work inside. A
+  policy block arriving on the live ledger flashes the innermost three once; a halt locks them all
+  in the block colour. They pause when off-screen and hold still under reduced motion.
+- **Kill switch.** In the navbar on every page from tablet up, pinned bottom-right on phones,
+  never in the menu drawer. Hold 1.2s (or hold Enter/Space); the request fires when the hold
+  completes and never waits on the fill.
+- **Motion.** Transform, opacity and clip-path only; the boundary lines are the single ambient
+  motion. Marquee pauses on hover and focus. Reduced motion: static chips, still lines.
 
-## Components (`apps/web/components/ui`)
+## Where this departs from the doc (all to match what actually runs)
 
-| Kind | Components |
-|---|---|
-| Standard shadcn (copied, lightly adapted) | `button`, `card`, `badge` (+ `success`, `warning`, `danger` variants), `table` (focusable scroll region), `input`, `label`, `separator` |
-| Project components on that base | `status-badge`, `hash` (copy), `hold-button` (kill switch), `sheet` (non-modal, drag-to-dismiss), `timeline`, `code-view`, `page-header`, `PageTransition` |
+- **Network:** the badge says `mainnet` (NEAR Intents has no testnet, D1).
+- **"Built on":** lists NEAR Protocol, NEAR Intents, 1Click, NEAR AI Cloud, TypeScript and Next.js.
+  It leaves out OutLayer and NEAR Testnet, which the code does not use.
+- **Menu:** includes Buy a report and Reports.
+- **Hero CTAs:** "View the ledger" and "Run Athera", with a `Mainnet · real funds` sublabel.
+- **Boundary-line colour:** the doc's `#FCFAF8` is drawn over a photo. With no photo it is
+  invisible on white, so the light theme uses a faint black (`rgba(10,10,10,0.13)`).
+- **Kill switch from the keyboard:** a 1.2s hold of Enter or Space, the same gesture as the
+  pointer, instead of a confirm popover.
+- **Theme switching:** dark mode follows the OS (`prefers-color-scheme`), not a `data-theme`
+  attribute.
+- **Secondary label colour:** `--muted-2` is darkened from rgb(152,152,152) to #767676 so it
+  passes AA as text.
 
-The sheet is deliberately not Radix Dialog's modal mode: a modal makes the rest of the page
-inert, and the kill switch must stay reachable while a sheet is open.
+## Checks
 
-## Layout rule learned the hard way
-
-Grids default to `auto` columns that grow to fit their content. Every page grid, card body and
-content grid uses `grid-cols-[minmax(0,1fr)]`, and cards are `min-w-0`, so long hashes and code
-scroll or wrap inside their box instead of widening the page. Unbreakable hashes in running text
-get `overflow-wrap: anywhere`.
+axe-core WCAG 2.2 AA: 0 violations across 11 screens (control room, run, ledger, entry, policy,
+security, buy, reports, report, order, 404) in light and dark at 1280px and 390px. No horizontal
+overflow on any of them.

@@ -60,8 +60,8 @@ export function HoldButton({
         disabled={disabled}
         aria-describedby={hintId}
         className={cn(
-          "border-destructive/50 text-destructive relative inline-flex h-9 items-center justify-center overflow-hidden rounded-md border px-4 text-sm font-medium shadow-xs transition-[transform,background-color] duration-150 select-none touch-none pointer-coarse:h-11",
-          "hover:bg-destructive/10 focus-visible:ring-destructive/30 outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50 data-[holding=true]:scale-[0.97]",
+          "border-border bg-background text-foreground relative inline-flex h-10 items-center justify-center gap-2 overflow-hidden rounded-full border px-4 text-sm font-medium transition-[transform,background-color] duration-150 select-none touch-none pointer-coarse:h-11",
+          "hover:bg-surface-1 focus-visible:ring-destructive/40 outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50 data-[holding=true]:scale-[0.97]",
           className,
         )}
         onPointerDown={(e) => {
@@ -85,9 +85,10 @@ export function HoldButton({
         onBlur={cancel}
         onContextMenu={(e) => e.preventDefault()}
       >
-        <span className="relative whitespace-nowrap">{label}</span>
+        <span className="relative inline-flex items-center gap-2 whitespace-nowrap"><span aria-hidden="true" className="bg-block-dot size-2 rounded-full" />{label}</span>
         {/* Inverted copy of the label inside the fill; both are clipped together. */}
-        <span aria-hidden="true" className="bg-destructive dark:text-background absolute inset-0 flex items-center justify-center whitespace-nowrap text-white" style={fill}>
+        <span aria-hidden="true" className="bg-destructive dark:text-background absolute inset-0 flex items-center justify-center gap-2 whitespace-nowrap text-white" style={fill}>
+          <span className="size-2 rounded-full bg-current" />
           {label}
         </span>
       </button>

@@ -6,76 +6,122 @@
 @custom-variant dark (@media (prefers-color-scheme: dark));
 
 /*
- * shadcn/ui default "neutral" theme (Tailwind v4, OKLCH), plus two status tokens shadcn doesn't
- * ship: --success (passed/confirmed) and --warning (pending). --destructive covers blocked/halted.
- * Status always pairs colour with an icon and a word.
+ * Athera design system (docs/ATHERA_DESIGN_SYSTEM.md). Doc tokens are defined as written; the
+ * shadcn variable names the components use are mapped onto them, so every primitive picks up the
+ * monochrome look. Signals: the *-dot colours are for dots and fills only; readable text uses the
+ * darker *-text variants (AA).
  */
 :root {
   color-scheme: light;
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --success: oklch(0.527 0.154 150.069);
-  --warning: oklch(0.555 0.163 48.998);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* — Colour (doc) — */
+  --bg: #ffffff;
+  --text: #0a0a0a;
+  --muted-text: #6b6b6b; /* doc: --muted (renamed: shadcn uses --muted for surfaces) */
+  --button-bg: #0a0a0a;
+  --button-text: #ffffff;
+  --border-soft: rgba(0, 0, 0, 0.08);
+  --surface-1: rgb(251, 251, 251);
+  --surface-2: rgb(248, 248, 248);
+  --muted-2: #767676; /* doc says rgb(152,152,152); darkened to pass AA as text */
+  /* ⚠ Adapted: the doc's #FCFAF8 is drawn over a hero photo; with no photo it is invisible on
+     white, so the boundary lines use a faint black. */
+  --line-arc: rgba(10, 10, 10, 0.13);
+  --pass-dot: #17c964;
+  --pass-text: #0b7a3b;
+  --block-dot: #ff4d2e;
+  --block-text: #c02a10;
+  --pending-dot: #f5a524;
+  --pending-text: #8a5a00;
+  --lift-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
 
-  /* Motion and layout tokens kept from the original system (used by components). */
+  --track-logo: -0.08em;
+  --track-display: -0.07em;
+  --track-serif: -0.08em;
+  --track-heading: -0.04em;
+  --track-body: -0.01em;
+  --r-pill: 9999px;
+  --r-sm: 6px;
+  --dur-fast: 150ms;
+  --dur-base: 240ms;
+  --dur-drawer: 400ms;
+  --dur-marquee: 30s;
+  --dur-pulse: 5s;
+  --max-w: 1200px;
+  --pad-x: 36px;
+
+  /* — shadcn names, mapped onto the doc — */
+  --radius: 6px;
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--bg);
+  --card-foreground: var(--text);
+  --popover: var(--bg);
+  --popover-foreground: var(--text);
+  --primary: var(--button-bg);
+  --primary-foreground: var(--button-text);
+  --secondary: var(--surface-1);
+  --secondary-foreground: var(--text);
+  --muted: var(--surface-1);
+  --muted-foreground: var(--muted-text);
+  --accent: var(--surface-2);
+  --accent-foreground: var(--text);
+  --destructive: var(--block-text);
+  --success: var(--pass-text);
+  --warning: var(--pending-text);
+  --border: var(--border-soft);
+  --input: rgba(0, 0, 0, 0.14);
+  --ring: rgba(10, 10, 10, 0.45);
+
+  /* Motion and layout tokens used by components. */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
-  --dur-feedback: 160ms;
+  --dur-feedback: 150ms;
   --dur-fade: 160ms;
   --dur-enter: 240ms;
   --dur-exit: 160ms;
   --dur-max: 400ms;
-  --dur-stage: 600ms;
+  --dur-stage: 300ms;
   --stagger: 35ms;
   --tap: 44px;
-  --bar-h: 61px;
-  --z-sticky: 10;
-  --z-sheet: 50;
-  --z-killswitch: 60;
-  --z-toast: 70;
+  --bar-h: 0px;
+  --z-sticky: 100;
+  --z-sheet: 120;
+  --z-killswitch: 130;
+  --z-toast: 140;
+}
+
+@media (max-width: 1199px) {
+  :root {
+    --pad-x: 32px;
+  }
+}
+@media (max-width: 809px) {
+  :root {
+    --pad-x: 20px;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --success: oklch(0.765 0.177 163.223);
-    --warning: oklch(0.828 0.189 84.429);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
+    --bg: #0a0a0a;
+    --text: #f5f5f4;
+    --muted-text: #9a9a9a;
+    --surface-1: #121212;
+    --surface-2: #1a1a1a;
+    --border-soft: rgba(255, 255, 255, 0.08);
+    --button-bg: #f5f5f4;
+    --button-text: #0a0a0a;
+    --muted-2: #8c8c8c;
+    --line-arc: rgba(255, 255, 255, 0.14);
+    /* Text signals re-checked for AA on #0a0a0a. */
+    --pass-text: #3fcf7e;
+    --block-text: #ff7a5c;
+    --pending-text: #f5b544;
+    --lift-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+    --input: rgba(255, 255, 255, 0.16);
+    --ring: rgba(245, 245, 244, 0.5);
   }
 }
 
@@ -88,9 +134,19 @@
   }
 }
 
+/* Tailwind's default palette and radius scale are switched off (doc §6.7); only these exist. */
+@theme {
+  --color-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --color-white: #ffffff;
+  --color-black: #0a0a0a;
+}
+
 @theme inline {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-serif4), Georgia, serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -103,18 +159,26 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-muted-2: var(--muted-2);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-pass-dot: var(--pass-dot);
+  --color-block-dot: var(--block-dot);
+  --color-pending-dot: var(--pending-dot);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-sm);
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-full: var(--r-pill);
+  --shadow-lift: var(--lift-shadow);
 }
 
 @layer base {
@@ -141,11 +205,13 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    letter-spacing: var(--track-body);
   }
   h1,
   h2,
   h3 {
     text-wrap: balance;
+    letter-spacing: var(--track-heading);
   }
   p {
     text-wrap: pretty;
@@ -172,8 +238,27 @@
 @layer utilities {
   /* Amounts, hashes, IDs, timestamps. */
   .data {
-    font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.92em;
+    letter-spacing: 0;
     font-variant-numeric: tabular-nums slashed-zero;
+  }
+  /* Amounts, limits, timestamps: Inter with tabular figures (mono is for hashes and IDs). */
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+  /* The one serif-italic accent word per view. */
+  .serif-accent {
+    font-family: var(--font-serif4), Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: var(--track-serif);
+  }
+  .shell {
+    margin-inline: auto;
+    width: 100%;
+    max-width: var(--max-w);
+    padding-inline: var(--pad-x);
   }
   .visually-hidden {
     position: absolute;
@@ -183,4 +268,18 @@
     clip-path: inset(50%);
     white-space: nowrap;
   }
+}
+
+/* In-progress timeline node (design system §4.8). */
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+html {
+  overflow-x: clip;
 }

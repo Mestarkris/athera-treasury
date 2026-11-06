@@ -50,7 +50,8 @@ export function saleStageEntries(run: readonly LedgerEntry[]): Partial<Record<St
   set("paid", beforeSplit.find((e) => e.type === "settlement"));
   set("sale", saleEntry);
   set("split", [...run].reverse().find((e) => e.type === "payout"));
-  set("ai", run.find((e) => e.type === "cost") ?? run.find((e) => e.type === "policy_check" && (e.payload as { proposal?: { kind?: string } } | undefined)?.proposal?.kind === "inference_spend"));
+  // The report's own AI call (the last one); an earlier one may be the pre-payment availability check.
+  set("ai", [...run].reverse().find((e) => e.type === "cost") ?? run.find((e) => e.type === "policy_check" && (e.payload as { proposal?: { kind?: string } } | undefined)?.proposal?.kind === "inference_spend"));
   set("report", run.find((e) => e.type === "report"));
   return out;
 }

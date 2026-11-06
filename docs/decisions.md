@@ -346,3 +346,29 @@ goes through 1Click, AI calls run on NEAR AI Cloud, and every step stays under t
 - **Limits:** order creation is rate-limited in memory (10 per hour per client IP), which is
   enough for a single server. Unauthenticated 1Click quotes carry a 0.25% fee: a $0.05 order on
   NEAR asks 0.050506 USDC.
+
+## D19: Restyle to the Athera design system (2026-11-06, user decision)
+
+The user supplied `docs/ATHERA_DESIGN_SYSTEM.md` and `docs/ATHERA_BUILD_PROMPT.md` and chose two
+things:
+- **Restyle, keeping Tailwind:** the doc's tokens are mapped onto the shadcn variables, and
+  Tailwind's default palette, radius scale and shadows are switched off. The alternative was a
+  full rewrite in CSS Modules.
+- **Match reality where the doc predates the build:** the badge says mainnet; "Built on" lists
+  1Click and NEAR AI Cloud instead of OutLayer and testnet; the menu includes Buy and Reports;
+  the ticker values come from the live `config.yaml`.
+
+What was added:
+- the hero, with policy-boundary lines that flash on a live block and lock on a halt, the rule
+  ticker, and a fade into the latest 5 ledger rows;
+- the serif wordmark navbar, with a network pill, a pill kill switch and a full-screen menu
+  drawer;
+- the pinned bottom-right kill switch on phones;
+- dot status pills, hairline sections instead of cards, and 52px table rows;
+- 24px timeline nodes.
+
+One fix along the way: the Run page now shows a sale run together with a report written later
+by a retry. Every departure from the doc is listed in docs/design.md.
+
+Checked: axe-core reports 0 violations across 11 screens × 2 themes × 2 widths, with no overflow.
+All 118 tests pass.

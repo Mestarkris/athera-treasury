@@ -152,7 +152,7 @@ Ledger.append at every step · kill-switch check before every step, before signi
 | `packages/settlement` | NEP-413 signing, versioned nonces, NEAR transaction encoding (byte-identical to near-js, tested), RPC, the custody checks |
 | `packages/agents` | Treasury and Accounting agents (proposals only), the orchestrator, reconciliation after a halt |
 | `packages/ledger` | Append-only, hash-chained JSONL ledger |
-| `apps/web` | Next.js console (Tailwind + shadcn/ui): control room, live demo timeline, ledger, entry detail, policy, security |
+| `apps/web` | Next.js console in the Athera design system (D19): control room, run timeline, buy and order pages, reports, ledger, entry detail, policy, security |
 | `scripts/demo` | `demo`, `phase1`, `verify`, `preflight`, `halt`, `keygen` |
 
 Where the non-negotiables are enforced:
@@ -209,9 +209,9 @@ checked against the chain.
 
 - [docs/decisions.md](docs/decisions.md): every judgement call, D1–D16.
 - [docs/setup.md](docs/setup.md): accounts, keys, wallet approvals.
-- [docs/design.md](docs/design.md): the UI (Tailwind + shadcn/ui) and the rules it keeps.
+- [docs/design.md](docs/design.md): the UI, built to [docs/ATHERA_DESIGN_SYSTEM.md](docs/ATHERA_DESIGN_SYSTEM.md), and where it departs from it.
 - [docs/review-phase6.md](docs/review-phase6.md): the interface guidelines review and accessibility scan.
-  Since the switch to shadcn/ui (D16), the scan still reports 0 violations; the AI-look checklist there applied to the previous design.
+  After the D19 restyle the scan reports 0 violations across 11 screens; the AI-look checklist there applied to an earlier design.
 - [docs/Athera_Treasury_Architecture_Blueprint.pdf](docs/Athera_Treasury_Architecture_Blueprint.pdf):
   the original blueprint.
 
