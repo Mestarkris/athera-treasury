@@ -16,8 +16,12 @@ export default async function BuyPage() {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
       <PageHeader
-        title="Buy a treasury report"
-        description={`An AI-written review of any NEAR account's treasury: what it holds, the risks and the policy limits worth setting. ${price} paid in almost any token on almost any chain through NEAR Intents 1Click; payments bridged from another chain cost more when the bridge has a minimum, and the quote shows the exact price. Athera never touches your wallet; you send the payment yourself.`}
+        title={
+          <>
+            Know who can move your DAO’s <span className="serif-accent">money</span>.
+          </>
+        }
+        description={`For members, delegates and contributors of NEAR DAOs. An AI-written review of any account from public chain data: who can approve spending and how many votes it takes, what has been paid out recently, how concentrated the holdings are, spam tokens to avoid, and the limits worth setting. ${price}, paid in almost any token on almost any chain through NEAR Intents 1Click (bridged payments can cost more when the bridge has a minimum; the quote shows the exact price). You send the payment yourself; Athera never touches your wallet.`}
       />
       <Card>
         <CardContent>

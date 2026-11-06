@@ -7,7 +7,9 @@ import { deriveState, pendingAccounting, pendingReports, type MovementPayload } 
 import { TreasuryAgent, type TreasuryInstruction } from "./treasury.ts";
 import { meteredChat } from "./ai/metered.ts";
 import type { NearAiClient } from "./ai/nearai.ts";
-import { gatherFacts, parseAnalysis, reportPrompt, type ChainReader, type Report, type ReportStore } from "./sales/analyst.ts";
+import { parseAnalysis, reportPrompt, type ChainReader, type Report, type ReportStore } from "./sales/analyst.ts";
+import { gatherFactsV2 } from "./sales/facts.ts";
+import type { FetchLike } from "./ai/nearai.ts";
 import type { OneClickClient, StatusResult } from "./sales/oneclick.ts";
 import { SalesAgent, type SaleOrder } from "./sales/sales.ts";
 import type { Order, OrderStore } from "./sales/orders.ts";
@@ -22,6 +24,8 @@ export interface SaleDeps {
   readonly orders?: OrderStore;
   /** Model for the report; must be in config inference.approved_models. */
   readonly model?: string;
+  /** Fetch for the public indexers (FastNEAR, NearBlocks); tests pass a fake. */
+  readonly dataFetch?: FetchLike;
   /** Output token budget for the report call. */
   readonly maxTokens?: number;
   /** Swap status polling (tests pass a no-op sleep). */
@@ -367,7 +371,7 @@ export class Orchestrator {
     this.guard("report", log);
     const reportId = `${runId}-report`;
     const tokens = await sd.oneclick.tokens();
-    const facts = await gatherFacts(sd.rpc, cfg.verifier, x.subject, tokens);
+    const facts = await gatherFactsV2(sd.rpc, cfg.verifier, x.subject, tokens, sd.dataFetch ? { fetch: sd.dataFetch } : {});
     const model = sd.model ?? cfg.inference.approved_models[0]!;
     const ai = await meteredChat(
       { policy: this.d.policy, ledger: this.d.ledger, killSwitch: this.d.killSwitch, ai: sd.ai, append: (e) => log(e) },

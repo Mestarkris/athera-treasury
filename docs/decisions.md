@@ -372,3 +372,43 @@ by a retry. Every departure from the doc is listed in docs/design.md.
 
 Checked: axe-core reports 0 violations across 11 screens × 2 themes × 2 widths, with no overflow.
 All 118 tests pass.
+
+## D20: A DAO-grade report, aimed at DAO members and delegates (2026-11-06)
+
+**Who it's for.** Members, delegates and contributors of NEAR DAOs. They can already pay with no
+sign-up. A balances-only report did not answer their questions, so the report now covers the
+following, all from public data:
+- **Who can move the money.** Full-access keys on the account. For a Sputnik DAO: which members
+  can approve a transfer, how many approvals one needs (Sputnik's RoleWeight rule:
+  floor(total × ratio) + 1, capped at the total), the voting window, the bond and the roles.
+- **Holdings.** NEAR, staked NEAR, fungible tokens on the account and NEAR Intents balances, each
+  valued at 1Click prices, plus the largest single asset's share of the total.
+- **Spam tokens.** Unpriced tokens with link-style or "claim" names are flagged as likely phishing
+  airdrops and are not counted in the total.
+- **Recent transfer proposals.** From the DAO's last 40 proposals, with the approved total over 90
+  days. A proposal left "InProgress" after its voting window closed is shown as Expired.
+- **Activity.** The date of the latest transaction.
+
+**Data sources.**
+- Balances, policy and proposals are read from NEAR RPC.
+- FastNEAR is used only to learn which tokens and staking pools to check.
+- NearBlocks is used only for recent activity.
+- A source that fails is listed under `missing` and is never guessed.
+
+**Prompt safety.** The analyst prompt is written for DAO readers. It treats proposal descriptions
+and token names as untrusted third-party text: they are described, never followed.
+
+**Free preview.** `/buy` now shows a preview when the account field is left: approvals needed,
+holdings, concentration and spam tokens. It uses public data, makes no AI call, and is cached and
+rate-limited. `pnpm facts <account>` prints the full facts from the command line.
+
+**Compatibility.** The first report (balances only, version 1) still renders.
+
+**Checked.**
+- Facts tests: the approval threshold, payouts, expired proposals, spam flags, a failing source,
+  and a proposal description that tries to give instructions.
+- Live reads of `marketing.sputnik-dao.near`: 2 of 3 approvals, $72.19 held, 68% in one asset,
+  3 spam tokens.
+- axe reports 0 violations.
+
+No paid v2 report exists yet; the next real sale will be the first.

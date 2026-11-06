@@ -46,6 +46,10 @@ halts (one from a separate operator process). `pnpm verify` re-checks all of it 
   0.05 USDC reached the revenue account and was split 0.035 / 0.015. The first model (GLM) spent its
   whole output budget on reasoning, so the report was written afterwards with
   `pnpm demo --mode=report`. That run used Claude Haiku, cost $0.000539 and did not pay again.
+- **Reports are written for DAO members and delegates** ([D20](docs/decisions.md)): who can approve
+  spending and how many votes it takes, recent transfer proposals, holdings and concentration, and
+  spam tokens, all from public chain data, with a free preview at `/buy`. No paid report in this
+  format exists yet.
 - **Outside customers can order and pay from almost any chain** at `/buy` ([D18](docs/decisions.md)):
   1Click gives them a deposit address on their own chain and delivers USDC to Athera. Order creation
   and quotes are tested live (including a Base USDC quote); no outside customer has paid yet.

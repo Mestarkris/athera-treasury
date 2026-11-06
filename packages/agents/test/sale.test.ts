@@ -88,6 +88,7 @@ function setup(o: FakeOpts = {}, yaml = SALE_YAML) {
     rpc: f.rpc,
     reports,
     poll: { sleep: async () => {} },
+    dataFetch: (async () => new Response("offline in tests", { status: 503 })) as FetchLike,
   };
   const orch = new Orchestrator({ policy, settlement, ledger, killSwitch, readBalances, sales });
   return { orch, ledger, reports, orders, killSwitch, f, treasurySign, revenueSign, policy, sales };

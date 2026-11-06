@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card";
 import { PageHeader } from "../../../components/ui/page-header";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
 import { getReport, readLedger } from "../../../lib/ledger";
+import { FactsSections } from "./FactsSections";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: r ? `Report: ${r.subject}` : "Report" };
 }
 
-const usd = (n: number | null) => (n === null ? "unpriced" : `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
 function List({ items }: { items: readonly string[] }) {
   if (items.length === 0) return <p className="text-muted-foreground text-sm">None given.</p>;
@@ -63,48 +62,7 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="grid content-start gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Holdings</CardTitle>
-              <CardDescription>
-                Read from NEAR mainnet at block <span className="data">{f.block_height}</span>. Prices from the 1Click token list at that time.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Where</TableHead>
-                    <TableHead>Asset</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead className="text-right">Value</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow>
-                    <TableCell>Account</TableCell>
-                    <TableCell>NEAR</TableCell>
-                    <TableCell className="data text-right">{Number(f.native_near).toFixed(4)}</TableCell>
-                    <TableCell className="data text-right">{usd(f.native_usd)}</TableCell>
-                  </TableRow>
-                  {f.intents.map((h) => (
-                    <TableRow key={h.asset}>
-                      <TableCell>NEAR Intents</TableCell>
-                      <TableCell title={h.asset}>{h.symbol}</TableCell>
-                      <TableCell className="data text-right">{Number(h.amount).toLocaleString("en-US", { maximumFractionDigits: 6 })}</TableCell>
-                      <TableCell className="data text-right">{usd(h.usd)}</TableCell>
-                    </TableRow>
-                  ))}
-                  <TableRow>
-                    <TableCell colSpan={3} className="font-medium">
-                      Total
-                    </TableCell>
-                    <TableCell className="data text-right font-medium">{usd(f.total_usd)}</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <FactsSections facts={f} />
 
           <Card>
             <CardHeader>
