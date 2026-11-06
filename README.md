@@ -58,8 +58,9 @@ halts (one from a separate operator process). `pnpm verify` re-checks all of it 
 - **The treasury agent is rule-based.** The AI agent is the Analyst. Its every call is policy-checked
   before and costed after ([D17](docs/decisions.md)). Procurement is a stub (labelled `STUB`), and
   external "swarm" proposals are refused as untrusted (tested).
-- **The ledger is a file on one server.** It is committed here, and the web app serves it. Public
-  hosting is not set up yet ([D11](docs/decisions.md)).
+- **The ledger is a file on the operator's machine.** The Vercel site shows the copy that
+  `pnpm worker` publishes. If the worker is offline, the site shows the last published state and
+  paid orders wait ([D21](docs/decisions.md)). Not deployed yet.
 - **Mobile has been checked in emulation only, not on a physical phone yet** ([D14](docs/decisions.md)).
 
 ## Quick start
@@ -115,6 +116,13 @@ pnpm web:build && pnpm web:start
 It serves http://127.0.0.1:3000 on the server only; reach it over an SSH tunnel. Running loops and
 using the kill switch from the browser need the operator token in `apps/web/.env.local`
 (`ATHERA_OPERATOR_TOKEN`). Without it the app is read-only.
+
+## Hosting
+
+The public site runs on Vercel with no keys. The agent and its keys stay on the operator's
+machine, and `pnpm worker` keeps the two in step through a small Upstash Redis store: it picks
+up orders, fulfils paid ones and publishes the ledger. Setup takes about 10 minutes: see
+[docs/hosting.md](docs/hosting.md) (decision D21).
 
 ## Verify a settlement yourself
 
@@ -211,7 +219,8 @@ checked against the chain.
 
 ## Documentation
 
-- [docs/decisions.md](docs/decisions.md): every judgement call, D1–D16.
+- [docs/decisions.md](docs/decisions.md): every judgement call, D1–D21.
+- [docs/hosting.md](docs/hosting.md): the Vercel site, the store and `pnpm worker`.
 - [docs/setup.md](docs/setup.md): accounts, keys, wallet approvals.
 - [docs/design.md](docs/design.md): the UI, built to [docs/ATHERA_DESIGN_SYSTEM.md](docs/ATHERA_DESIGN_SYSTEM.md), and where it departs from it.
 - [docs/review-phase6.md](docs/review-phase6.md): the interface guidelines review and accessibility scan.
@@ -226,7 +235,7 @@ checked against the chain.
 | Testnet demo | Mainnet with tiny amounts: there is no NEAR Intents testnet (D1) |
 | `/ledger` first-load JS < 120 KB gz | 153.2 KB. The Next.js framework alone is ~125 KB, and the switch to Tailwind + shadcn/ui (D16) added ~13 KB; `/demo` is 154.6 KB |
 | Mobile checked on a device | Emulation and automated checks only so far |
-| Public ledger hosting | Not deployed yet |
+| Public ledger hosting | Ready for Vercel (docs/hosting.md); not deployed yet |
 | Solver-routed or cross-chain intents | Sale loop uses 1Click's solvers for a wNEAR → USDC swap; run once on mainnet (D17) |
 | Customers paying from other chains | Built: `/buy` and order fulfilment (D18); no outside payment yet |
 | Automatic report retry | Reconcile retries up to 3 times per sale, then `--mode=report` (D18) |

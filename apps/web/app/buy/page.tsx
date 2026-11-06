@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Buy a report" };
 
 export default async function BuyPage() {
-  const cfg = loadPolicy().config;
+  const cfg = (await loadPolicy()).config;
   const tokens = await payTokens().catch(() => []);
   const price = cfg.sales ? `$${cfg.sales.min_price_usd}` : "";
   const settle = cfg.sales?.settle_asset ?? "";

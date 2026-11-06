@@ -412,3 +412,30 @@ rate-limited. `pnpm facts <account>` prints the full facts from the command line
 - axe reports 0 violations.
 
 No paid v2 report exists yet; the next real sale will be the first.
+
+## D21: hosted site on Vercel, agent stays on the operator's machine
+
+**Problem.** Vercel functions can't append to the ledger file, keep order files, read git or
+start the key-holding run process. They could only do those things if the signing keys moved
+to Vercel, which widens custody to a third party.
+
+**Decision.** Split it:
+- The site runs on Vercel with no keys and reads from a small Upstash Redis store
+  (`@athera/store`, plain REST, no SDK).
+- `pnpm worker` runs here. It copies orders and halts from the store, fulfils paid orders through
+  the existing `--mode=fulfil` run, and publishes the ledger, reports, order status, config and
+  policy history.
+- Locally, with no store credentials, the site still reads the files directly, as before.
+
+**Trust.** The hash-chained ledger is still the source of truth, here. The site re-verifies the
+chain it is given, and `pnpm verify` still checks every entry against the chain. The worker
+republishes the whole ledger if the stored copy is ever not a prefix of the local one.
+
+**Kill switch.** A halt can be engaged from either side and spreads to both. Release happens only
+here (`pnpm halt --release`), and it clears the site first so the worker can't copy the halt back.
+
+**Checked.**
+- Store tests against an in-memory Upstash stand-in.
+- End to end with `ATHERA_ROOT=/nonexistent`: every page renders from the store, an order is
+  created on the site and arrives here, a site halt reaches `data/HALT` and blocks new orders,
+  `pnpm halt --release` clears both sides, and `/api/runs` refuses in hosted mode.

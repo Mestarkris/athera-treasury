@@ -7,9 +7,9 @@ import { listReports, loadPolicy } from "../../lib/ledger";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Reports" };
 
-export default function ReportsPage() {
-  const reports = listReports();
-  const sales = loadPolicy().config.sales;
+export default async function ReportsPage() {
+  const reports = await listReports();
+  const sales = (await loadPolicy()).config.sales;
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
       <PageHeader

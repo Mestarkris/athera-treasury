@@ -22,7 +22,7 @@ function describe(p: unknown): string {
 /** Live from public RPC, cached 60s: what keys can act for each account, on-chain and in the verifier. */
 export async function liveKeys(): Promise<{ at: string; accounts: AccountKeys[] }> {
   if (cache && Date.now() - cache.at < 60_000) return { at: new Date(cache.at).toISOString(), accounts: cache.value };
-  const cfg = loadPolicy().config;
+  const cfg = (await loadPolicy()).config;
   const rpc = new NearRpc(DEFAULT_MAINNET_RPCS);
   const accounts: AccountKeys[] = [];
   for (const [role, account] of [

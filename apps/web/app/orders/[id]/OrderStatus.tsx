@@ -46,8 +46,8 @@ export function OrderStatus({ initial }: { initial: PublicOrder }) {
       if (b.payment?.status === "SUCCESS" && b.order.status !== "fulfilled" && Date.now() - asked.current > 15_000) {
         asked.current = Date.now();
         const f = await fetch(`/api/orders/${order.id}/fulfil`, { method: "POST" }).catch(() => null);
-        const fb = f ? ((await f.json().catch(() => ({}))) as { error?: string }) : {};
-        if (!stop) setNote(f && f.status >= 400 && f.status !== 409 ? (fb.error ?? null) : null);
+        const fb = f ? ((await f.json().catch(() => ({}))) as { error?: string; note?: string }) : {};
+        if (!stop) setNote(f && f.status >= 400 && f.status !== 409 ? (fb.error ?? null) : (fb.note ?? null));
       }
     };
     void tick();

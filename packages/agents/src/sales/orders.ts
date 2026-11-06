@@ -76,6 +76,10 @@ export class MemoryOrderStore {
 }
 
 export type OrderStore = Pick<FileOrderStore, "save" | "get" | "list">;
+/** Where createOrder puts a new order: a local store or the hosted one (async). */
+export interface OrderSink {
+  save(o: Order): void | Promise<void>;
+}
 
 export class OrderError extends Error {
   constructor(
@@ -91,7 +95,7 @@ export class OrderError extends Error {
  * that delivers exactly the price in the settle asset to the revenue account. Nothing is signed.
  */
 export async function createOrder(
-  d: { policy: PolicyEngine; oneclick: OneClickClient; orders: OrderStore; state: PolicyState; accountExists: (id: string) => Promise<boolean> },
+  d: { policy: PolicyEngine; oneclick: OneClickClient; orders: OrderSink; state: PolicyState; accountExists: (id: string) => Promise<boolean> },
   req: { subject: string; originAsset: string; refundTo: string; price_usd?: string },
   now = new Date(),
 ): Promise<{ order: Order; check: PolicyCheck }> {
@@ -168,6 +172,6 @@ export async function createOrder(
     offer_check: { result: check.result, summary: check.summary, policy_hash: check.policy.hash },
     status: "awaiting_payment",
   };
-  d.orders.save(order);
+  await d.orders.save(order);
   return { order, check };
 }

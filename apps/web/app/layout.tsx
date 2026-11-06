@@ -30,9 +30,9 @@ export const viewport: Viewport = {
 
 export const dynamic = "force-dynamic";
 
-export default function RootLayout({ children }: { children: ReactNode }) {
-  const policy = currentPolicy();
-  const ks = killSwitchState();
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const policy = await currentPolicy();
+  const ks = await killSwitchState();
   const halted = ks.engaged || ks.configFlag;
   return (
     <html lang="en" data-halted={halted ? "true" : "false"}>
@@ -44,7 +44,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         >
           Skip to content
         </a>
-        <StatusProvider initial={{ killSwitch: ks, run: readRunLock() }} operatorEnabled={operatorEnabled()}>
+        <StatusProvider initial={{ killSwitch: ks, run: (await readRunLock()) }} operatorEnabled={operatorEnabled()}>
           <StatusStrip network={policy.network} verifier={policy.verifier} policyVersion={policy.version} policyHash={policy.hash} />
           <main id="main" className="shell pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:pt-10 sm:pb-20">
             {children}

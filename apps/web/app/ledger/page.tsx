@@ -27,7 +27,7 @@ const selectClass =
 type Search = { type?: string; agent?: string; run?: string; before?: string };
 
 async function Rows({ search }: { search: Search }) {
-  const { entries, chain } = readLedger();
+  const { entries, chain } = await readLedger();
   const type = TYPES.find((t) => t === search.type);
   const agent = AGENTS.find((a) => a === search.agent);
   const run = search.run && /^[a-z0-9]{1,40}$/.test(search.run) ? search.run : undefined;

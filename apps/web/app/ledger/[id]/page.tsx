@@ -55,13 +55,13 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 export default async function EntryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { entries } = readLedger();
+  const { entries } = await readLedger();
   const e = entries.find((x) => x.id === id);
   if (!e) notFound();
   const byId = new Map(entries.map((x) => [x.id, x]));
   const upstream = (e.upstream ?? []).map((u) => byId.get(u)).filter((x): x is LedgerEntry => x !== undefined);
   const downstream = entries.filter((x) => x.upstream?.includes(e.id));
-  const policy = currentPolicy();
+  const policy = await currentPolicy();
   const verify = howToVerify(e, policy.submitter);
   const rules = rulesOf(e);
   const result = displayResult(e, entries);

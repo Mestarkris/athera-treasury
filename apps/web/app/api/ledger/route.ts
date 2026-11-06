@@ -7,9 +7,9 @@ export const dynamic = "force-dynamic";
  * GET /api/ledger?type=&agent=&result=&run=&limit=
  * Newest first. Includes the hash-chain check so a reader can see the file was not rewritten.
  */
-export function GET(req: NextRequest) {
+export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams;
-  const { entries, chain } = readLedger();
+  const { entries, chain } = await readLedger();
   const match = (key: "type" | "agent" | "result" | "run_id", param: string) => {
     const v = q.get(param);
     return (e: (typeof entries)[number]) => !v || e[key] === v;
@@ -23,7 +23,7 @@ export function GET(req: NextRequest) {
     .reverse();
   return Response.json(
     {
-      policy: currentPolicy(),
+      policy: (await currentPolicy()),
       chain,
       total: entries.length,
       count: Math.min(filtered.length, limit),

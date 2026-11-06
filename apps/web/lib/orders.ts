@@ -4,10 +4,25 @@ import { mkdirSync, openSync } from "node:fs";
 import { resolve } from "node:path";
 import { FileOrderStore, OneClickClient, deriveState, newRunId, type Order, type OneClickToken, type StatusResult } from "@athera/agents";
 import { DEFAULT_MAINNET_RPCS, NearRpc } from "@athera/settlement";
-import { ROOT, loadPolicy, readLedger } from "./ledger";
+import { K } from "@athera/store";
+import { ROOT, readLedger, store } from "./ledger";
 
 export const ORDERS_DIR = resolve(ROOT, "data/orders");
-export const orders = new FileOrderStore(ORDERS_DIR);
+const fileOrders = new FileOrderStore(ORDERS_DIR);
+/**
+ * Orders: files locally; hosted, a hash in the store. The site only ever creates an order; the
+ * worker copies it to the agent's machine, fulfils it there and publishes the status back.
+ */
+export const orders = {
+  async get(id: string): Promise<Order | undefined> {
+    if (!store) return fileOrders.get(id);
+    return /^o[0-9a-z]{8,24}$/.test(id) ? ((await store.hget<Order>(K.orders, id)) ?? undefined) : undefined;
+  },
+  async save(o: Order): Promise<void> {
+    if (store) await store.hset(K.orders, o.id, o);
+    else fileOrders.save(o);
+  },
+};
 export const oneclick = new OneClickClient();
 
 /** The web server holds no keys; it only reads chain state and asks 1Click for quotes. */
@@ -18,8 +33,7 @@ export const accountExists = (id: string) =>
     () => false,
   );
 
-export const orderState = () => deriveState(readLedger().entries, {}, false, new Date());
-export const orderPolicy = () => loadPolicy();
+export const orderState = async () => deriveState((await readLedger()).entries, {}, false, new Date());
 
 let tokenCache: { at: number; value: OneClickToken[] } | undefined;
 /** 1Click's routable tokens with a price, cached for 10 minutes. */

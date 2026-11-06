@@ -61,8 +61,8 @@ async function KeyTables() {
   );
 }
 
-export default function SecurityPage() {
-  const cfg = loadPolicy().config;
+export default async function SecurityPage() {
+  const cfg = (await loadPolicy()).config;
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
       <PageHeader

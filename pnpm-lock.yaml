@@ -193,6 +193,9 @@ importers:
       '@athera/settlement':
         specifier: workspace:*
         version: link:../../packages/settlement
+      '@athera/store':
+        specifier: workspace:*
+        version: link:../../packages/store
       '@radix-ui/react-slot':
         specifier: 1.5.0
         version: 1.5.0(@types/react@19.2.2)(react@19.2.9)
@@ -295,6 +298,8 @@ importers:
         specifier: 2.5.1
         version: 2.5.1(@near-js/crypto@2.5.1(@near-js/types@2.5.1)(@near-js/utils@2.5.1(@near-js/types@2.5.1)))(@near-js/types@2.5.1)(@near-js/utils@2.5.1(@near-js/types@2.5.1))
 
+  packages/store: {}
+
   scripts/demo:
     dependencies:
       '@athera/agents':
@@ -309,6 +314,9 @@ importers:
       '@athera/settlement':
         specifier: workspace:*
         version: link:../../packages/settlement
+      '@athera/store':
+        specifier: workspace:*
+        version: link:../../packages/store
       '@scure/base':
         specifier: 2.4.0
         version: 2.4.0

@@ -5,6 +5,7 @@ import { cache } from "react";
 import { readLedgerFile, verifyChain, type LedgerEntry } from "@athera/ledger";
 import { PolicyEngine } from "@athera/policy";
 import { FileReportStore, type Report } from "@athera/agents";
+import { AtheraStore, K, type AgentMeta } from "@athera/store";
 
 /** Repo root. `next dev`/`start` run with cwd = apps/web. */
 export const ROOT = process.env["ATHERA_ROOT"] ?? resolve(process.cwd(), "../..");
@@ -14,15 +15,31 @@ export const LOCK_PATH = resolve(ROOT, "data/RUN.lock");
 export const CONFIG_PATH = resolve(ROOT, "config.yaml");
 export const REPORTS_DIR = resolve(ROOT, "data/reports");
 
+/**
+ * Where the site reads from. Locally (no store credentials) it reads the files the agent writes.
+ * Hosted (Vercel) it reads what the local worker publishes into the store; see docs/hosting.md.
+ */
+export const store = AtheraStore.fromEnv();
+export const hosted = store !== null;
+
 const reports = new FileReportStore(REPORTS_DIR);
-export const listReports = cache((): Report[] => reports.list());
-export const getReport = cache((id: string): Report | undefined => reports.get(id));
+export const listReports = cache(async (): Promise<Report[]> =>
+  store ? (await store.hvalues<Report>(K.reports)).sort((a, b) => b.created_at.localeCompare(a.created_at)) : reports.list(),
+);
+export const getReport = cache(async (id: string): Promise<Report | undefined> => (store ? ((await store.hget<Report>(K.reports, id)) ?? undefined) : reports.get(id)));
+
+/** The worker's last check-in (hosted only). */
+export const agentMeta = cache(async (): Promise<AgentMeta | null> => (store ? store.agent() : null));
+/** A worker that has not checked in for this long is shown as offline. */
+export const AGENT_STALE_MS = 3 * 60_000;
+export const agentOnline = (m: AgentMeta | null) => (hosted ? Boolean(m && Date.now() - Date.parse(m.seen_at) < AGENT_STALE_MS) : true);
 
 /**
  * Whether the run process will find a NEAR AI key. Only presence is checked; the web server
- * never reads the value into memory beyond this line test.
+ * never reads the value into memory beyond this line test. Hosted: as reported by the worker.
  */
-export function aiKeyConfigured(): boolean {
+export async function aiKeyConfigured(): Promise<boolean> {
+  if (store) return Boolean((await agentMeta())?.ai_key);
   if (process.env["NEARAI_API_KEY"]) return true;
   const p = resolve(ROOT, ".env");
   if (!existsSync(p)) return false;
@@ -30,15 +47,22 @@ export function aiKeyConfigured(): boolean {
 }
 
 /** Read fresh per request (deduplicated within one render); another process appends to it. */
-export const readLedger = cache((): { entries: LedgerEntry[]; chain: ReturnType<typeof verifyChain> } => {
-  const entries = readLedgerFile(LEDGER_PATH);
+export const readLedger = cache(async (): Promise<{ entries: LedgerEntry[]; chain: ReturnType<typeof verifyChain> }> => {
+  const entries = store ? await store.ledgerFrom<LedgerEntry>(0) : readLedgerFile(LEDGER_PATH);
   return { entries, chain: verifyChain(entries) };
 });
 
-export const loadPolicy = cache(() => PolicyEngine.load(CONFIG_PATH));
+export class NotPublishedError extends Error {}
 
-export function currentPolicy() {
-  const p = loadPolicy();
+export const loadPolicy = cache(async (): Promise<PolicyEngine> => {
+  if (!store) return PolicyEngine.load(CONFIG_PATH);
+  const src = await store.getText(K.config);
+  if (!src) throw new NotPublishedError("The agent has not published its policy yet. Run `pnpm worker` on the operator machine.");
+  return PolicyEngine.fromSource(src);
+});
+
+export async function currentPolicy() {
+  const p = await loadPolicy();
   return {
     version: p.ref.version,
     hash: p.ref.hash,

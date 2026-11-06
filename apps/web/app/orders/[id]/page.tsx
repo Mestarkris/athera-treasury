@@ -9,7 +9,7 @@ export const metadata = { title: "Order" };
 
 export default async function OrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const o = orders.get(id);
+  const o = await orders.get(id);
   if (!o) notFound();
   const p = publicOrder(o);
   return (

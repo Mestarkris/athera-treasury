@@ -13,7 +13,7 @@
     "phase1": "tsx scripts/demo/phase1.ts",
     "demo": "tsx scripts/demo/run.ts",
     "halt": "tsx scripts/demo/halt.ts",
-    "prepare": "git config core.hooksPath .githooks",
+    "prepare": "git config core.hooksPath .githooks || true",
     "keygen": "tsx scripts/demo/keygen.ts",
     "preflight": "tsx scripts/demo/preflight.ts",
     "setup:wallet": "pnpm --filter @athera/wallet-setup start",
@@ -22,7 +22,9 @@
     "facts": "tsx scripts/demo/facts-preview.ts",
     "demo:halt": "tsx scripts/demo/run.ts --halt",
     "web:build": "pnpm --filter @athera/web build",
-    "web:start": "pnpm --filter @athera/web start --hostname 127.0.0.1"
+    "web:start": "pnpm --filter @athera/web start --hostname 127.0.0.1",
+    "worker": "tsx scripts/demo/worker.ts",
+    "store:keys": "bash scripts/add-store-keys.sh"
   },
   "devDependencies": {
     "@types/node": "22.19.1",

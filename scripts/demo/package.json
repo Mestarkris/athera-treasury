@@ -9,6 +9,7 @@
     "@athera/policy": "workspace:*",
     "@athera/settlement": "workspace:*",
     "yaml": "2.9.1",
-    "@scure/base": "2.4.0"
+    "@scure/base": "2.4.0",
+    "@athera/store": "workspace:*"
   }
 }

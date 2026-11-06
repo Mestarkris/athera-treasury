@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const r = getReport(id);
+  const r = await getReport(id);
   return { title: r ? `Report: ${r.subject}` : "Report" };
 }
 
@@ -39,9 +39,9 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 export default async function ReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const r = getReport(id);
+  const r = await getReport(id);
   if (!r) notFound();
-  const { entries } = readLedger();
+  const { entries } = await readLedger();
   const exists = (ledgerId: string | undefined) => (ledgerId && entries.some((e) => e.id === ledgerId) ? ledgerId : undefined);
   const sale = exists(r.ledger.sale);
   const cost = exists(r.ledger.cost);

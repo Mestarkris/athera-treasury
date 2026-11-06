@@ -7,8 +7,8 @@ import { DemoConsole } from "./DemoConsole";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Demo" };
 
-export default function DemoPage() {
-  const { entries } = readLedger();
+export default async function DemoPage() {
+  const { entries } = await readLedger();
   // The most recent run that started with a treasury proposal (skip reconcile-only runs).
   // Prefer the most recent complete loop (it shows all seven stages); fall back to the latest run.
   // A report written by a later retry belongs to its sale's run: show the sale run plus that
@@ -23,7 +23,7 @@ export default function DemoPage() {
     ? entries.filter((e) => e.run_id === lastRunId || (saleOfReport && lastReport && e.run_id === lastReport.run_id && e.run_id !== lastRunId && (e.type === "cost" || e.type === "report" || e.upstream?.includes(saleOfReport.id))))
     : [];
   // Same figures scripts/demo/run.ts uses: 0.01 of the first approved asset, fee per policy.
-  const cfg = loadPolicy().config;
+  const cfg = (await loadPolicy()).config;
   const asset = cfg.approved.assets[0] ?? "";
   const decimals = cfg.assets.find((a) => a.id === asset)?.decimals ?? 24;
   const principal = parseUnits("0.01", decimals);
@@ -39,7 +39,7 @@ export default function DemoPage() {
     product: (cfg.sales?.product ?? "report").replace("_", " "),
     price: `$${cfg.sales?.min_price_usd ?? "?"}`,
     asset: settle?.symbol ?? "USDC",
-    enabled: Boolean(cfg.sales && cfg.inference && aiKeyConfigured()),
+    enabled: Boolean(cfg.sales && cfg.inference && (await aiKeyConfigured())),
   };
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-6">

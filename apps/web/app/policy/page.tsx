@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import Link from "next/link";
 import { ViewTransition } from "react";
 import { Badge } from "../../components/ui/badge";
@@ -7,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../..
 import { CodeView } from "../../components/ui/code-view";
 import { PageHeader } from "../../components/ui/page-header";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
-import { CONFIG_PATH, currentPolicy, readLedger } from "../../lib/ledger";
+import { currentPolicy, loadPolicy, readLedger } from "../../lib/ledger";
 import { policyDirty, policyHistory } from "../../lib/policy-history";
 import { cn } from "../../lib/utils";
 
@@ -32,15 +31,15 @@ function Diff({ text }: { text: string }) {
 
 export default async function PolicyPage({ searchParams }: { searchParams: Promise<{ v?: string }> }) {
   const { v } = await searchParams;
-  const policy = currentPolicy();
-  const source = readFileSync(CONFIG_PATH, "utf8");
-  const history = policyHistory();
-  const dirty = policyDirty();
+  const policy = await currentPolicy();
+  const source = (await loadPolicy()).source;
+  const history = await policyHistory();
+  const dirty = await policyDirty();
   const selected = v ? history.find((h) => h.commit === v) : undefined;
   const shown = selected
     ? { source: selected.source, version: selected.version ?? "?", hash: selected.hash, key: selected.commit }
     : { source, version: policy.version, hash: policy.hash, key: "current" };
-  const { entries } = readLedger();
+  const { entries } = await readLedger();
 
   // Policy versions actually used, from the ledger: which hash every check ran under.
   const used = new Map<string, { version: number; checks: number; first: string; last: string }>();

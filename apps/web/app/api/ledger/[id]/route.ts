@@ -5,11 +5,11 @@ export const dynamic = "force-dynamic";
 /** GET /api/ledger/:id — one entry, its causal neighbours, and how to verify it without our logs. */
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  const { entries, chain } = readLedger();
+  const { entries, chain } = await readLedger();
   const entry = entries.find((e) => e.id === id);
   if (!entry) return Response.json({ error: `no ledger entry ${id}` }, { status: 404 });
   const byId = new Map(entries.map((e) => [e.id, e]));
-  const policy = currentPolicy();
+  const policy = await currentPolicy();
   return Response.json(
     {
       entry,

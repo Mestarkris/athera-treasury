@@ -84,8 +84,8 @@ function BuiltOn() {
   );
 }
 
-function RecentLedger() {
-  const { entries } = readLedger();
+async function RecentLedger() {
+  const { entries } = await readLedger();
   const recent = entries.slice(-5).reverse();
   return recent.length ? (
     <LedgerTable caption={`Latest ${recent.length} of ${entries.length} ledger entries`} entries={recent} all={entries} />
@@ -102,7 +102,7 @@ export default async function ControlRoom() {
   const inferenceRatio = Number(s.today.inference.usedUsd) / Number(s.today.inference.limitUsd || "1");
   const halted = s.killSwitch.engaged || s.killSwitch.configFlag;
 
-  const policy = loadPolicy();
+  const policy = await loadPolicy();
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-12">

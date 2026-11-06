@@ -3,7 +3,7 @@ import { deriveState } from "@athera/agents";
 import { FileKillSwitch, fmt, key, parseUnits } from "@athera/policy";
 import { DEFAULT_MAINNET_RPCS, NearRpc } from "@athera/settlement";
 import { readFileSync } from "node:fs";
-import { HALT_PATH, LOCK_PATH, loadPolicy, readLedger } from "./ledger";
+import { HALT_PATH, LOCK_PATH, agentMeta, agentOnline, hosted, loadPolicy, readLedger, store } from "./ledger";
 import { operatorEnabled } from "./operator";
 
 export interface RunState {
@@ -11,7 +11,11 @@ export interface RunState {
   since: string;
 }
 
-export function readRunLock(): RunState | null {
+export async function readRunLock(): Promise<RunState | null> {
+  if (store) {
+    const m = await agentMeta();
+    return m && agentOnline(m) ? m.run : null;
+  }
   try {
     const v = JSON.parse(readFileSync(LOCK_PATH, "utf8")) as { pid: number; runId: string; since: string };
     try {
@@ -25,16 +29,21 @@ export function readRunLock(): RunState | null {
   }
 }
 
-export function killSwitchState() {
+export async function killSwitchState() {
+  const configFlag = (await loadPolicy()).config.kill_switch;
+  if (store) {
+    const h = await store.halt();
+    return { engaged: Boolean(h), reason: h?.reason ?? null, since: h?.since ?? null, configFlag };
+  }
   const s = new FileKillSwitch(HALT_PATH).state();
-  return { engaged: s.engaged, reason: s.reason ?? null, since: s.since ?? null, configFlag: loadPolicy().config.kill_switch };
+  return { engaged: s.engaged, reason: s.reason ?? null, since: s.since ?? null, configFlag };
 }
 
 let balanceCache: { at: number; value: string | null } | undefined;
 /** Treasury balance inside the verifier, read from public RPC, cached 30s. Null if RPC fails. */
 async function treasuryBalance(): Promise<{ value: string | null; at: string }> {
   if (balanceCache && Date.now() - balanceCache.at < 30_000) return { value: balanceCache.value, at: new Date(balanceCache.at).toISOString() };
-  const cfg = loadPolicy().config;
+  const cfg = (await loadPolicy()).config;
   const asset = cfg.approved.assets[0];
   let value: string | null = null;
   try {
@@ -49,9 +58,8 @@ async function treasuryBalance(): Promise<{ value: string | null; at: string }> 
 
 /** Everything the status strip and control room show. All from the ledger, config.yaml or RPC. */
 export async function getStatus() {
-  const policy = loadPolicy();
+  const [policy, { entries, chain }, killSwitch, run, agent] = await Promise.all([loadPolicy(), readLedger(), killSwitchState(), readRunLock(), agentMeta()]);
   const cfg = policy.config;
-  const { entries, chain } = readLedger();
   const asset = cfg.approved.assets[0] ?? "";
   const meta = cfg.assets.find((a) => a.id === asset);
   const decimals = meta?.decimals ?? 24;
@@ -66,8 +74,9 @@ export async function getStatus() {
     verifier: cfg.verifier,
     treasury: cfg.accounts.treasury,
     policy: { version: policy.ref.version, hash: policy.ref.hash },
-    killSwitch: killSwitchState(),
-    run: readRunLock(),
+    killSwitch,
+    run,
+    agent: hosted ? { online: agentOnline(agent), seenAt: agent?.seen_at ?? null } : null,
     operator: operatorEnabled(),
     ledger: { entries: entries.length, chainOk: chain.ok, lastSeq: entries.at(-1)?.seq ?? -1 },
     today: {
