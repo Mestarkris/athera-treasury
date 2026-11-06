@@ -24,6 +24,7 @@ export function deriveState(entries: readonly LedgerEntry[], balances: Record<st
   const feeChargedFor = new Set<string>();
   const splitDoneFor = new Set<string>();
   const peakToday: Record<string, bigint> = { ...balances };
+  let inferenceTodayMicros = 0n;
 
   for (const e of entries) {
     if (!sameUtcDay(e.ts, now)) continue;
@@ -35,6 +36,10 @@ export function deriveState(entries: readonly LedgerEntry[], balances: Record<st
       if (e.payload.basis_ref && e.payload.kind === "fee") feeChargedFor.add(e.payload.basis_ref);
       if (e.payload.basis_ref && e.payload.kind === "revenue_split") splitDoneFor.add(e.payload.basis_ref);
     }
+    // Actual AI inference cost recorded today (cost entries carry the billed micro-USD).
+    if (e.type === "cost" && typeof e.payload === "object" && e.payload && "usd_micros" in e.payload) {
+      inferenceTodayMicros += BigInt(String((e.payload as { usd_micros: unknown }).usd_micros));
+    }
     if (e.type === "policy_check" && typeof e.payload === "object" && e.payload && "balances" in e.payload) {
       const snap = (e.payload as { balances: Record<string, string> }).balances;
       for (const [k, v] of Object.entries(snap)) {
@@ -44,7 +49,7 @@ export function deriveState(entries: readonly LedgerEntry[], balances: Record<st
     }
   }
 
-  return { halted, movedToday, inferenceTodayMicros: 0n, balances, peakToday, feeChargedFor, splitDoneFor };
+  return { now, halted, movedToday, inferenceTodayMicros, balances, peakToday, feeChargedFor, splitDoneFor };
 }
 
 /**
@@ -78,7 +83,7 @@ export function pendingAccounting(entries: readonly LedgerEntry[]): {
     }
   }
   const fees = entries
-    .filter((e) => e.type === "fee" && e.result === "confirmed" && !splitFor.has(e.id) && e.amount)
+    .filter((e) => (e.type === "fee" || e.type === "sale") && e.result === "confirmed" && !splitFor.has(e.id) && e.amount)
     .map((e) => ({ ref: e.id, asset: e.amount!.asset, amount: e.amount!.value }));
   return { principals, fees };
 }

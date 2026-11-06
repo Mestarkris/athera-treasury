@@ -3,7 +3,7 @@
 # Every policy check records `version` and the SHA-256 of this file's exact bytes.
 # Amounts are decimal strings in whole tokens; the engine converts them with `decimals`.
 
-version: 2
+version: 3
 network: mainnet          # NEAR Intents has no testnet; see docs/decisions.md D1
 verifier: intents.near
 
@@ -14,10 +14,13 @@ assets:
   - id: nep141:wrap.near
     symbol: wNEAR
     decimals: 24
+  - id: nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1   # native USDC on NEAR
+    symbol: USDC
+    decimals: 6
 
 approved:
   chains: [near]
-  assets: [nep141:wrap.near]
+  assets: [nep141:wrap.near, nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1]
   protocols: [intents.near]
 
 accounts:
@@ -30,6 +33,9 @@ limits:
     nep141:wrap.near:
       per_tx: "0.05"
       per_day: "0.20"
+    nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1:
+      per_tx: "1.00"
+      per_day: "5.00"
 
 risk:
   max_drawdown_pct: 50     # treasury may not fall more than this below today's peak
@@ -55,7 +61,22 @@ counterparties:            # the only accounts client capital may be sent to
     label: Demo vendor
 
 agents:                    # which proposal kinds each agent may originate
-  treasury: [transfer]
+  treasury: [transfer, service_purchase]
   accounting: [fee, revenue_split]
   procurement: [vendor_payment]
-  sales: []
+  sales: [sale_offer]
+  analyst: [inference_spend]
+
+# What Athera sells. The AI sales agent picks a price; it can never leave these bounds.
+sales:
+  product: treasury_report
+  min_price_usd: "0.05"
+  max_price_usd: "0.50"
+  settle_asset: nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1   # proceeds land in accounts.revenue as USDC, via 1Click
+
+# AI inference on NEAR AI Cloud. Every call is checked against the per-call cap and the daily
+# budget (limits.inference_spend_per_day_usd) before it is made, and its real cost is logged.
+inference:
+  provider: cloud-api.near.ai
+  approved_models: [z-ai/glm-5.3-flash, anthropic/claude-haiku-5-5]
+  max_call_usd: "0.02"

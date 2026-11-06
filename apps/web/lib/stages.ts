@@ -12,7 +12,48 @@ export const STAGES = [
   { key: "split", title: "Revenue split paid" },
 ] as const;
 
-export type StageKey = (typeof STAGES)[number]["key"];
+/** The stages of one sale: offer → quote → payment → swap → split → AI report. */
+export const SALE_STAGES = [
+  { key: "offer", title: "Sales offers a report" },
+  { key: "offer_check", title: "Price check" },
+  { key: "quote", title: "1Click quote" },
+  { key: "pay_check", title: "Payment check" },
+  { key: "paid", title: "Payment intent settled" },
+  { key: "sale", title: "USDC received" },
+  { key: "split", title: "Revenue split paid" },
+  { key: "ai", title: "AI call checked and costed" },
+  { key: "report", title: "Report delivered" },
+] as const;
+
+export type StageKey = (typeof STAGES)[number]["key"] | (typeof SALE_STAGES)[number]["key"];
+
+/** A sale run starts with a sale_offer proposal. */
+export const isSaleRun = (run: readonly LedgerEntry[]) =>
+  run.some((e) => e.type === "proposal" && (e.payload as { kind?: string } | undefined)?.kind === "sale_offer");
+
+export function saleStageEntries(run: readonly LedgerEntry[]): Partial<Record<StageKey, LedgerEntry>> {
+  const out: Partial<Record<StageKey, LedgerEntry>> = {};
+  const set = (k: StageKey, e: LedgerEntry | undefined) => {
+    if (e) out[k] = e;
+  };
+  const kindOf = (e: LedgerEntry) => (e.payload as { kind?: string } | undefined)?.kind;
+  const checkAfter = (id: string | undefined) => (id ? run.find((e) => e.type === "policy_check" && e.upstream?.includes(id)) : undefined);
+  const offer = run.find((e) => e.type === "proposal" && kindOf(e) === "sale_offer");
+  set("offer", offer);
+  set("offer_check", checkAfter(offer?.id));
+  set("quote", run.find((e) => e.type === "quote"));
+  const purchase = run.find((e) => e.type === "proposal" && kindOf(e) === "service_purchase");
+  set("pay_check", checkAfter(purchase?.id));
+  const saleEntry = run.find((e) => e.type === "sale");
+  const splitStart = run.findIndex((e) => e.type === "proposal" && kindOf(e) === "revenue_split");
+  const beforeSplit = splitStart === -1 ? run : run.slice(0, splitStart);
+  set("paid", beforeSplit.find((e) => e.type === "settlement"));
+  set("sale", saleEntry);
+  set("split", [...run].reverse().find((e) => e.type === "payout"));
+  set("ai", run.find((e) => e.type === "cost") ?? run.find((e) => e.type === "policy_check" && (e.payload as { proposal?: { kind?: string } } | undefined)?.proposal?.kind === "inference_spend"));
+  set("report", run.find((e) => e.type === "report"));
+  return out;
+}
 
 /**
  * Map a run's ledger entries onto the seven stages. Only entries that exist produce "done";
@@ -37,11 +78,12 @@ export function stageEntries(run: readonly LedgerEntry[]): Partial<Record<StageK
   return out;
 }
 
-export function stagesFromRun(run: readonly LedgerEntry[], finished: boolean): { stages: Stage[]; halt?: LedgerEntry } {
-  const found = stageEntries(run);
+export function stagesFromRun(run: readonly LedgerEntry[], finished: boolean, sale = isSaleRun(run)): { stages: Stage[]; halt?: LedgerEntry } {
+  const found = sale ? saleStageEntries(run) : stageEntries(run);
+  const list: readonly { key: StageKey; title: string }[] = sale ? SALE_STAGES : STAGES;
   const halt = run.find((e) => e.type === "halt");
   let stopped = false;
-  const stages: Stage[] = STAGES.map(({ key, title }) => {
+  const stages: Stage[] = list.map(({ key, title }) => {
     const e = found[key];
     if (stopped) return { key, title, status: "skipped" };
     if (!e) {

@@ -18,6 +18,7 @@
     "preflight": "tsx scripts/demo/preflight.ts",
     "setup:wallet": "pnpm --filter @athera/wallet-setup start",
     "verify": "tsx scripts/demo/verify-ledger.ts",
+    "ai:check": "tsx scripts/demo/ai-check.ts",
     "demo:halt": "tsx scripts/demo/run.ts --halt",
     "web:build": "pnpm --filter @athera/web build",
     "web:start": "pnpm --filter @athera/web start --hostname 127.0.0.1"

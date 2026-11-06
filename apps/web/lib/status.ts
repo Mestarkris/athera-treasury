@@ -77,7 +77,8 @@ export async function getStatus() {
       moved: { value: moved.toString(), display: fmt(cfg, asset, moved) },
       perDay: { value: perDay.toString(), display: fmt(cfg, asset, perDay) },
       perTx: { value: perTx.toString(), display: fmt(cfg, asset, perTx) },
-      inference: { usedUsd: "0.00", limitUsd: cfg.limits.inference_spend_per_day_usd },
+      // Billed AI cost recorded in today's ledger "cost" entries (micro-USD → dollars).
+      inference: { usedUsd: (Number(state.inferenceTodayMicros) / 1e6).toFixed(4), limitUsd: cfg.limits.inference_spend_per_day_usd },
     },
     balance: { display: balance.value === null ? null : fmt(cfg, asset, BigInt(balance.value)), at: balance.at },
   };

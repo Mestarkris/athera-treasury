@@ -7,9 +7,16 @@ import { useStatus } from "../../components/shell/StatusProvider";
 import { Button } from "../../components/ui/button";
 import { StatusBadge as Badge } from "../../components/ui/status-badge";
 import { Timeline, type Stage } from "../../components/ui/timeline";
-import { STAGES, stageEntries, stagesFromRun } from "../../lib/stages";
+import { SALE_STAGES, STAGES, isSaleRun, saleStageEntries, stageEntries, stagesFromRun } from "../../lib/stages";
 
-type Mode = "loop" | "invalid";
+type Mode = "loop" | "invalid" | "sale";
+
+export interface SaleCost {
+  product: string;
+  price: string;
+  asset: string;
+  enabled: boolean;
+}
 
 function detail(e: LedgerEntry | undefined) {
   if (!e) return undefined;
@@ -40,7 +47,7 @@ function detail(e: LedgerEntry | undefined) {
  * written. A stage changes only when its entry arrives through /api/stream: no timers, no
  * optimistic stages.
  */
-export function DemoConsole({ lastRun, cost }: { lastRun: LedgerEntry[]; cost: { principal: string; fee: string; total: string; vendor: string } }) {
+export function DemoConsole({ lastRun, cost, sale }: { lastRun: LedgerEntry[]; cost: { principal: string; fee: string; total: string; vendor: string }; sale: SaleCost }) {
   const { live, operatorEnabled, token, onEntry, operatorFetch } = useStatus();
   const [runId, setRunId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode | null>(null);
@@ -49,11 +56,11 @@ export function DemoConsole({ lastRun, cost }: { lastRun: LedgerEntry[]; cost: {
   const [starting, setStarting] = useState(false);
   const sawLock = useRef(false);
   // Real funds move on mainnet: the first click arms, the second (within 6s) starts.
-  const [armed, setArmed] = useState(false);
+  const [armed, setArmed] = useState<"loop" | "sale" | null>(null);
   useEffect(() => {
     if (!armed) return;
-    const t = setTimeout(() => setArmed(false), 6000);
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setArmed(false);
+    const t = setTimeout(() => setArmed(null), 6000);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setArmed(null);
     window.addEventListener("keydown", onKey);
     return () => {
       clearTimeout(t);
@@ -78,9 +85,12 @@ export function DemoConsole({ lastRun, cost }: { lastRun: LedgerEntry[]; cost: {
   const reconciled = useMemo(() => (runId ? entries.filter((e) => e.run_id.startsWith(`${runId}c`)) : []), [entries, runId]);
   const isLive = Boolean(runId);
   const runFinished = isLive ? finished || main.some((e) => e.type === "halt" || e.type === "error") : true;
-  const { stages } = stagesFromRun(main, runFinished);
-  const found = stageEntries(main);
-  const withDetail: Stage[] = stages.map((s, i) => ({ ...s, detail: detail(found[STAGES[i]!.key]) }));
+  const saleRun = isLive ? mode === "sale" : isSaleRun(main);
+  const { stages } = stagesFromRun(main, runFinished, saleRun);
+  const found = saleRun ? saleStageEntries(main) : stageEntries(main);
+  const keys = saleRun ? SALE_STAGES : STAGES;
+  const withDetail: Stage[] = stages.map((s, i) => ({ ...s, detail: detail(found[keys[i]!.key]) }));
+  const reportId = (main.find((e) => e.type === "report")?.payload as { report_id?: string } | undefined)?.report_id;
   const current = withDetail.find((s) => s.status === "blocked" || s.status === "halted") ?? [...withDetail].reverse().find((s) => s.status === "done");
   const announce = current ? `${current.title}: ${current.status === "done" ? "done" : current.status}` : "";
   // Server timestamps only (first to last ledger entry of the run); the browser clock may be skewed.
@@ -114,14 +124,26 @@ export function DemoConsole({ lastRun, cost }: { lastRun: LedgerEntry[]; cost: {
         <Button
           variant="default"
           onClick={() => {
-            if (!armed) return setArmed(true);
-            setArmed(false);
+            if (armed !== "sale") return setArmed("sale");
+            setArmed(null);
+            void start("sale");
+          }}
+          disabled={busy || locked || !sale.enabled}
+          aria-describedby="run-cost"
+        >
+          {armed === "sale" ? `Confirm: pay ${sale.price} on mainnet` : "Sell a treasury report"}
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            if (armed !== "loop") return setArmed("loop");
+            setArmed(null);
             void start("loop");
           }}
           disabled={busy || locked}
           aria-describedby="run-cost"
         >
-          {armed ? `Confirm: move ${cost.total} on mainnet` : "Run demo loop"}
+          {armed === "loop" ? `Confirm: move ${cost.total} on mainnet` : "Run payment loop"}
         </Button>
         <Button variant="outline" className="text-destructive border-destructive/50 hover:text-destructive" onClick={() => start("invalid")} disabled={busy || locked}>
           Trigger invalid action
@@ -135,9 +157,11 @@ export function DemoConsole({ lastRun, cost }: { lastRun: LedgerEntry[]; cost: {
                 ? "Halted: release the kill switch on the server before starting a run."
                 : live.run
                   ? `Run ${live.run.runId} is writing the ledger.`
-                  : armed
+                  : armed === "loop"
                     ? `Press again within 6 seconds to send ${cost.principal} to ${cost.vendor} and collect the ${cost.fee} fee on NEAR mainnet. Escape cancels.`
-                    : `Moves ${cost.principal} to ${cost.vendor} on mainnet, then collects the ${cost.fee} fee and pays the revenue split. The invalid action tries more than the per-transaction limit and is blocked before any intent exists.`}
+                    : armed === "sale"
+                      ? `Press again within 6 seconds: the treasury pays ${sale.price} in ${sale.asset} through 1Click for a ${sale.product}, and one metered AI call writes it. Escape cancels.`
+                      : `Selling a report: the treasury buys a ${sale.product} for ${sale.price}, paid through 1Click in ${sale.asset}; the revenue is split and an AI analyst writes the report.${sale.enabled ? "" : " (Needs NEARAI_API_KEY in the server's .env.)"} The payment loop moves ${cost.principal} to ${cost.vendor}. The invalid action is blocked before any intent exists.`}
         </p>
         {error ? (
           <p className="text-destructive basis-full text-sm" role="alert">
@@ -147,7 +171,7 @@ export function DemoConsole({ lastRun, cost }: { lastRun: LedgerEntry[]; cost: {
       </div>
 
       <div className="grid gap-1 border-t pt-5">
-        <h2 className="text-xl font-semibold">{isLive ? (mode === "invalid" ? "Invalid action" : "Demo loop") : "Last run in the ledger"}</h2>
+        <h2 className="text-xl font-semibold">{isLive ? (mode === "invalid" ? "Invalid action" : mode === "sale" ? "Report sale" : "Payment loop") : "Last run in the ledger"}</h2>
         <p className="text-muted-foreground text-sm">
           {main[0] ? (
             <>
@@ -173,7 +197,9 @@ export function DemoConsole({ lastRun, cost }: { lastRun: LedgerEntry[]; cost: {
               <Badge kind="block" label="Blocked before any intent was created. Nothing was signed." />
             ) : main.some((e) => e.type === "error") ? (
               <Badge kind="failed" label="Stopped with an error; see the ledger" />
-            ) : main.some((e) => e.type === "payout") ? (
+            ) : saleRun && reportId ? (
+              <Badge kind="confirmed" label="Report delivered" />
+            ) : !saleRun && main.some((e) => e.type === "payout") ? (
               <Badge kind="confirmed" label="Loop complete" />
             ) : null}
           </p>
@@ -187,7 +213,15 @@ export function DemoConsole({ lastRun, cost }: { lastRun: LedgerEntry[]; cost: {
         </p>
       ) : null}
 
-      <Timeline label="Loop stages" stages={withDetail} announce={announce} live={isLive} />
+      {reportId ? (
+        <p>
+          <Link href={`/reports/${reportId}`} className="font-medium underline underline-offset-4">
+            Read the report
+          </Link>
+        </p>
+      ) : null}
+
+      <Timeline label={saleRun ? "Sale stages" : "Loop stages"} stages={withDetail} announce={announce} live={isLive} />
     </div>
   );
 }

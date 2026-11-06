@@ -17,7 +17,7 @@ export const DecimalAmount = z.string().regex(/^\d+(\.\d+)?$/, "not a decimal am
 
 const PerAsset = <T extends z.ZodType>(value: T) => z.record(TokenId, value);
 
-export const AgentRole = z.enum(["treasury", "accounting", "procurement", "sales"]);
+export const AgentRole = z.enum(["treasury", "accounting", "procurement", "sales", "analyst"]);
 export type AgentRole = z.infer<typeof AgentRole>;
 
 export const ProposalKind = z.enum([
@@ -26,6 +26,10 @@ export const ProposalKind = z.enum([
   "revenue_split",
   "vendor_payment",
   "inference_spend",
+  /** Sales agent offers a product at a price (no value moves). */
+  "sale_offer",
+  /** A client pays a 1Click quote for an Athera service from its Intents balance. */
+  "service_purchase",
 ]);
 export type ProposalKind = z.infer<typeof ProposalKind>;
 
@@ -68,7 +72,21 @@ export const PolicyConfigSchema = z
     counterparties: z.array(
       z.object({ account: AccountId, role: z.enum(["vendor", "client"]), label: z.string().min(1) }),
     ),
-    agents: z.record(AgentRole, z.array(ProposalKind)),
+    agents: z.partialRecord(AgentRole, z.array(ProposalKind)),
+    /** What Athera sells and the price bounds the sales agent must respect. Absent (v1–v2): nothing is for sale. */
+    sales: z.object({
+      product: z.string().min(1),
+      min_price_usd: DecimalAmount,
+      max_price_usd: DecimalAmount,
+      /** Asset sale proceeds settle into, inside the verifier (revenue account). */
+      settle_asset: TokenId,
+    }).optional(),
+    /** AI inference: which models may be called and the most one call may cost. Absent (v1–v2): no model is approved. */
+    inference: z.object({
+      provider: z.string().min(1),
+      approved_models: z.array(z.string().min(1)).min(1),
+      max_call_usd: DecimalAmount,
+    }).optional(),
   })
   .strict()
   .superRefine((c, ctx) => {
@@ -82,6 +100,12 @@ export const PolicyConfigSchema = z
       if (!c.limits.capital_movement[a]) {
         ctx.addIssue({ code: "custom", path: ["limits", "capital_movement"], message: `${a} has no movement limits` });
       }
+    }
+    if (c.sales && Number(c.sales.min_price_usd) > Number(c.sales.max_price_usd)) {
+      ctx.addIssue({ code: "custom", path: ["sales"], message: "min_price_usd is above max_price_usd" });
+    }
+    if (c.sales && !c.approved.assets.includes(c.sales.settle_asset)) {
+      ctx.addIssue({ code: "custom", path: ["sales", "settle_asset"], message: "settle_asset must be an approved asset" });
     }
     if (!c.approved.protocols.includes(c.verifier)) {
       ctx.addIssue({ code: "custom", path: ["verifier"], message: "verifier must be an approved protocol" });
@@ -116,8 +140,26 @@ export const ProposalSchema = z
     legs: z.array(TransferLeg),
     /** For fee / revenue_split: the upstream settled amount this is derived from. */
     basis: z.object({ ref: z.string().min(1), asset: TokenId, amount: z.string().regex(/^\d+$/) }).optional(),
-    /** For inference_spend: cost in micro-USD. */
+    /** For inference_spend: projected (worst-case) cost in micro-USD, and the model to call. */
     inference_usd_micros: z.string().regex(/^\d+$/).optional(),
+    model: z.string().min(1).optional(),
+    /** For sale_offer: the product, price and who it is for. */
+    offer: z.object({ product: z.string().min(1), price_usd: DecimalAmount, customer: AccountId, subject: AccountId }).optional(),
+    /** For service_purchase: the 1Click quote being paid. */
+    quote: z
+      .object({
+        provider: z.literal("1click"),
+        depositAddress: z.string().min(1),
+        originAsset: TokenId,
+        destinationAsset: TokenId,
+        amountIn: z.string().regex(/^\d+$/),
+        amountOut: z.string().regex(/^\d+$/),
+        recipient: AccountId,
+        recipientType: z.enum(["INTENTS", "DESTINATION_CHAIN"]),
+        deadline: z.string().datetime(),
+        signature: z.string().min(1),
+      })
+      .optional(),
     reason: z.string().min(1),
     created_at: z.string().datetime(),
   })

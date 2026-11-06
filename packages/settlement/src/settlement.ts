@@ -121,7 +121,9 @@ export class Settlement {
     this.authorize(check, "intent creation");
     if (this.used.has(check.proposalHash)) throw new AuthorizationError("this policy check was already used");
     const p = check.proposal;
-    if (p.kind === "inference_spend") throw new SettlementError("inference_spend moves no value; nothing to settle");
+    if (p.kind === "inference_spend" || p.kind === "sale_offer" || p.legs.length === 0) {
+      throw new SettlementError(`${p.kind} moves no value; nothing to settle`);
+    }
 
     const memo = memoFor(p, check.policy.hash);
     const intents: TransferIntentJson[] = p.legs.map((l) => ({

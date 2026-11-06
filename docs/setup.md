@@ -82,6 +82,24 @@ pnpm verify
 `pnpm demo` and `pnpm demo:halt` broadcast real mainnet transfers of the configured tiny amounts.
 `pnpm verify` is read-only.
 
+### Selling a report (the business loop)
+
+The Analyst writes reports with NEAR AI Cloud. Put your key in `.env` without it showing on screen
+or in shell history:
+
+```bash
+read -rs -p "NEAR AI key: " K && printf 'NEARAI_API_KEY=%s\n' "$K" >> .env && unset K && echo
+```
+
+```bash
+pnpm demo --mode=sale
+```
+
+This pays about $0.05 of wNEAR from the treasury's intents balance to a 1Click deposit address. 1Click
+delivers $0.05 USDC to the revenue account, which is then split 70/30. One AI call, capped at $0.02
+by policy, writes the report. The report is at `/reports/<id>`. Add `--subject=<account>` to report on
+another account.
+
 ## Revoking
 
 From your wallet: delete the `TREASURY_PK` access key from your account, and call

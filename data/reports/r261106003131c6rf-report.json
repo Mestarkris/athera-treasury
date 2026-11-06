@@ -1,0 +1,70 @@
+{
+  "id": "r261106003131c6rf-report",
+  "created_at": "2026-11-06T00:31:37.605Z",
+  "product": "treasury_report",
+  "subject": "mestarkris2.near",
+  "customer": "mestarkris2.near",
+  "price_usd": "0.05",
+  "facts": {
+    "account": "mestarkris2.near",
+    "read_at": "2026-11-06T00:31:31.774Z",
+    "block_height": 223241287,
+    "native_near": "0.359129249845514399999998",
+    "native_usd": 1.33,
+    "storage_bytes": 320,
+    "is_contract": false,
+    "intents": [
+      {
+        "asset": "nep141:wrap.near",
+        "symbol": "wNEAR",
+        "amount": "0.435970095736890312831086",
+        "usd": 1.62
+      }
+    ],
+    "total_usd": 2.95
+  },
+  "analysis": {
+    "headline": "mestarkris2.near holds about $2.95 across NEAR and wNEAR; not a DAO treasury",
+    "summary": "This is a small personal account, not a contract, so it does not look like a DAO treasury. It holds about 0.36 NEAR ($1.33) in native balance and about 0.44 wNEAR ($1.62) in intents, for a total of $2.95 at block 223241287.",
+    "observations": [
+      "Native NEAR is about 0.359 NEAR, valued at $1.33 in this snapshot.",
+      "Intents hold about 0.436 wNEAR (wrap.near), valued at $1.62, which is the larger share of the total.",
+      "Total value is $2.95, and the account uses 320 bytes of storage.",
+      "The account is not a contract, which points to a personal or externally owned account rather than a DAO treasury.",
+      "The snapshot was taken on 2026-11-06 at block 223241287, so the figures reflect that moment only."
+    ],
+    "risks": [
+      "The account has no governance or multisig structure visible in these facts, so a single key controls all funds.",
+      "Native NEAR is the only balance available for gas and storage costs, so a low native balance could block transactions.",
+      "Holding value in wNEAR inside intents adds dependency on the intents layer and on the wrap.near contract."
+    ],
+    "recommendations": [
+      "If this account is meant to serve as a DAO treasury, move it to a multisig or DAO contract with at least two signers before adding material funds.",
+      "Keep a native NEAR floor sized to expected gas and storage costs so transactions do not fail for lack of fees.",
+      "Set a per-transaction spending limit and require approval above it once the account holds meaningful value.",
+      "Diversify beyond a single asset type by deciding on a target split between native NEAR and wNEAR and rebalancing when it drifts.",
+      "Review the intents balance periodically and withdraw to native holdings any amount not needed for near-term activity."
+    ]
+  },
+  "model": "anthropic/claude-haiku-5-5",
+  "cost_usd": "0.000539",
+  "ledger": {
+    "sale": "6c7a80a3ad660d1a",
+    "cost": "69a545b9bfc20b49",
+    "offer": "b306029f52f80a8c"
+  },
+  "payment": {
+    "deposit_address": "d4c181c79de9373636b39e1a36703dc6879f0ed4384fc95490a7ca69fdd99b58",
+    "intent_hashes": [
+      "29pTU8GZ7W8ckNPXZkNnhHgphHJfwpcQoKMWXTKuwuyG",
+      "7NAj7pUjd6WRFwMGRFhzdLYCG8Nud95coVh32ynnqDvt",
+      "5X2Fcxe9T3V65ZGFaC8yu7PfBKXnwoNBrdAg9FAqiDfa"
+    ],
+    "near_tx_hashes": [
+      "DFzRUqjvg9geqvGjuM9iM67g1BK3jQneEdz6ZRWiSMao",
+      "EdTzdPUdtZu2vwAwxUjmxYA146cD3hnjDhmZ9P9NM57v",
+      "3Qqetpy2pPtzGhRoYBTcd5owtmWWAt53vuMrHUCJ96mh",
+      "E8CHrHCUq8A53P3SfJuzYDMA8gtzGeR5yLn71tTzHM4X"
+    ]
+  }
+}

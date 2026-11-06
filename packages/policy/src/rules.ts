@@ -3,6 +3,8 @@ import { formatUnits, parseUnits, usdToMicros } from "./units.ts";
 
 /** Everything the engine knows about the world at check time. Built from the ledger and chain. */
 export interface PolicyState {
+  /** Check time. Quote deadlines are compared against it (recorded, so replays are exact). */
+  readonly now: Date;
   /** Runtime kill switch (operator halt), independent of `config.kill_switch`. */
   readonly halted: boolean;
   /** Outflows committed today (UTC), including submitted-but-unconfirmed. Key: `${account}|${asset}`. */
@@ -32,6 +34,8 @@ export const RULE_IDS = [
   "fee_rule",
   "revenue_split_rule",
   "inference_budget",
+  "pricing_rule",
+  "purchase_rule",
 ] as const;
 /** `schema` is reported only when a proposal is malformed and no other rule can run. */
 export type RuleId = (typeof RULE_IDS)[number] | "schema";
@@ -77,7 +81,7 @@ function totals(legs: readonly TransferLeg[]): Map<string, bigint> {
   return m;
 }
 
-const moves = (p: Proposal) => p.kind !== "inference_spend";
+const moves = (p: Proposal) => p.kind !== "inference_spend" && p.kind !== "sale_offer";
 
 type Rule = (x: Ctx) => RuleResult;
 
@@ -137,6 +141,10 @@ const rules: Record<(typeof RULE_IDS)[number], Rule> = {
         break;
       case "vendor_payment":
         allowed = c.counterparties.filter((x) => x.role === "vendor").map((x) => x.account);
+        break;
+      case "service_purchase":
+        // The only receiver is the deposit address of the quote being paid (checked by purchase_rule).
+        allowed = p.quote ? [p.quote.depositAddress] : [];
         break;
       default:
         allowed = c.counterparties.map((x) => x.account);
@@ -233,12 +241,52 @@ const rules: Record<(typeof RULE_IDS)[number], Rule> = {
 
   inference_budget: ({ c, p, s }) => {
     if (p.kind !== "inference_spend") return skip("inference_budget", "not an inference cost");
+    if (!c.inference) return block("inference_budget", "this policy version approves no AI model");
+    if (!p.model || !c.inference.approved_models.includes(p.model)) {
+      return block("inference_budget", `model ${p.model ?? "(none)"} is not an approved model`);
+    }
     const cost = BigInt(p.inference_usd_micros ?? "0");
+    const perCall = usdToMicros(c.inference.max_call_usd);
+    if (cost > perCall) {
+      return block("inference_budget", `this call could cost $${formatUnits(cost, 6)}, over the per-call cap $${c.inference.max_call_usd}`);
+    }
     const max = usdToMicros(c.limits.inference_spend_per_day_usd);
     const after = s.inferenceTodayMicros + cost;
     return after > max
       ? block("inference_budget", `inference spend today would be $${formatUnits(after, 6)}, over $${c.limits.inference_spend_per_day_usd}`)
-      : pass("inference_budget", `inference spend today $${formatUnits(after, 6)} of $${c.limits.inference_spend_per_day_usd}`);
+      : pass("inference_budget", `inference spend today at most $${formatUnits(after, 6)} of $${c.limits.inference_spend_per_day_usd} (${p.model})`);
+  },
+
+  pricing_rule: ({ c, p }) => {
+    if (p.kind !== "sale_offer") return skip("pricing_rule", "not a sale offer");
+    if (!c.sales) return block("pricing_rule", "this policy version sells nothing");
+    if (!p.offer) return block("pricing_rule", "sale offer has no price");
+    if (p.offer.product !== c.sales.product) return block("pricing_rule", `product ${p.offer.product} is not sold`);
+    const price = usdToMicros(p.offer.price_usd);
+    const min = usdToMicros(c.sales.min_price_usd);
+    const max = usdToMicros(c.sales.max_price_usd);
+    if (price < min) return block("pricing_rule", `price $${p.offer.price_usd} is below the minimum $${c.sales.min_price_usd}`);
+    if (price > max) return block("pricing_rule", `price $${p.offer.price_usd} is above the maximum $${c.sales.max_price_usd}`);
+    return pass("pricing_rule", `price $${p.offer.price_usd} within $${c.sales.min_price_usd}–$${c.sales.max_price_usd}`);
+  },
+
+  purchase_rule: ({ c, p, s }) => {
+    if (p.kind !== "service_purchase") return skip("purchase_rule", "not a service purchase");
+    const q = p.quote;
+    if (!q) return block("purchase_rule", "purchase has no 1Click quote");
+    if (!c.sales) return block("purchase_rule", "this policy version sells nothing");
+    if (q.recipient !== c.accounts.revenue || q.recipientType !== "INTENTS") {
+      return block("purchase_rule", `quote pays ${q.recipient}, not Athera's revenue account inside the verifier`);
+    }
+    if (q.destinationAsset !== c.sales.settle_asset) {
+      return block("purchase_rule", `quote settles in ${q.destinationAsset}, not ${c.sales.settle_asset}`);
+    }
+    if (Date.parse(q.deadline) <= s.now.getTime()) return block("purchase_rule", "quote has expired");
+    const leg = p.legs[0];
+    if (p.legs.length !== 1 || !leg || leg.to !== q.depositAddress || leg.asset !== q.originAsset || leg.amount !== q.amountIn) {
+      return block("purchase_rule", "payment must be exactly the quote's amountIn of its origin asset to its deposit address");
+    }
+    return pass("purchase_rule", `pays 1Click quote ${q.depositAddress.slice(0, 10)}… for Athera revenue`);
   },
 };
 

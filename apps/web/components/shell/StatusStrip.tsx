@@ -10,7 +10,8 @@ import { useStatus } from "./StatusProvider";
 
 const NAV = [
   { href: "/", label: "Control room" },
-  { href: "/demo", label: "Demo" },
+  { href: "/demo", label: "Run" },
+  { href: "/reports", label: "Reports" },
   { href: "/ledger", label: "Ledger" },
   { href: "/policy", label: "Policy" },
   { href: "/security", label: "Security" },

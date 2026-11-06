@@ -40,13 +40,19 @@ halts (one from a separate operator process). `pnpm verify` re-checks all of it 
 - **NEAR mainnet, not testnet.** NEAR Intents has no testnet deployment. The loop runs against the
   production verifier `intents.near` with tiny amounts, capped at a 0.5 wNEAR deposit
   ([D1](docs/decisions.md), [D5](docs/decisions.md)).
-- **No solver routing.** The loop uses same-asset `transfer` intents inside the verifier. Nothing is
-  swapped or bridged, so no cross-chain movement is demonstrated ([D7](docs/decisions.md)).
-- **The treasury agent is rule-based.** It turns an instruction into a proposal and makes no model
-  calls. The inference-spend limit is enforced and tested but stays at $0 ([D8](docs/decisions.md)).
-- **Sales and Procurement are stubs.** They are labelled `STUB` in code and not used by the loop. External
-  "swarm" proposals are refused as untrusted by the policy engine (tested), but there is no swarm
-  integration.
+- **The business loop has run once on mainnet.** Athera sells AI-written treasury reports. Payment goes
+  through 1Click in USDC; then the revenue is split and an Analyst agent writes the report with a
+  metered NEAR AI Cloud call ([D17](docs/decisions.md)). In the first sale (run `r261106002713ca7b`),
+  0.05 USDC reached the revenue account and was split 0.035 / 0.015. The first model (GLM) spent its
+  whole output budget on reasoning, so the report was written afterwards with
+  `pnpm demo --mode=report`. That run used Claude Haiku, cost $0.000539 and did not pay again.
+- **In the demo, the customer is the treasury itself.** Athera can only sign for accounts it holds keys
+  for. Customers paying from other chains need an order page that is not built yet.
+- **Routing is 1Click's job.** The original movement loop uses same-asset `transfer` intents; the sale
+  loop's swap is done by 1Click's solvers, never by Athera's agents ([D7](docs/decisions.md)).
+- **The treasury agent is rule-based.** The AI agent is the Analyst. Its every call is policy-checked
+  before and costed after ([D17](docs/decisions.md)). Procurement is a stub (labelled `STUB`), and
+  external "swarm" proposals are refused as untrusted (tested).
 - **The ledger is a file on one server.** It is committed here, and the web app serves it. Public
   hosting is not set up yet ([D11](docs/decisions.md)).
 - **Mobile has been checked in emulation only, not on a physical phone yet** ([D14](docs/decisions.md)).
@@ -216,4 +222,6 @@ checked against the chain.
 | `/ledger` first-load JS < 120 KB gz | 153.2 KB. The Next.js framework alone is ~125 KB, and the switch to Tailwind + shadcn/ui (D16) added ~13 KB; `/demo` is 154.6 KB |
 | Mobile checked on a device | Emulation and automated checks only so far |
 | Public ledger hosting | Not deployed yet |
-| Solver-routed or cross-chain intents | Not demonstrated (D7) |
+| Solver-routed or cross-chain intents | Sale loop uses 1Click's solvers for a wNEAR → USDC swap; run once on mainnet (D17) |
+| Customers paying from other chains | Not built: no order page or fulfilment watcher yet (D17) |
+| Automatic report retry | Manual: `pnpm demo --mode=report --sale=<id>` (D17) |

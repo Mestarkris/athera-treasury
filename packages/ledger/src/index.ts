@@ -2,7 +2,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { canonicalJson, sha256Hex, type PolicyRef } from "@athera/policy";
 
-export type LedgerAgent = "policy" | "treasury" | "settlement" | "accounting" | "procurement" | "sales" | "operator" | "system";
+export type LedgerAgent = "policy" | "treasury" | "settlement" | "accounting" | "procurement" | "sales" | "analyst" | "operator" | "system";
 
 export type LedgerEventType =
   | "policy_check"
@@ -13,6 +13,9 @@ export type LedgerEventType =
   | "fee"
   | "payout"
   | "cost"
+  | "quote"
+  | "sale"
+  | "report"
   | "halt"
   | "error";
 

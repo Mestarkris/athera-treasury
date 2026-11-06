@@ -234,3 +234,75 @@ Ambiguities resolved conservatively. Newest last. Each entry: decision, reason, 
   - No horizontal overflow on any screen at 1280px or 390px. Several grid and long-hash overflows were found
     and fixed (docs/design.md, "Layout rule").
   - View-transition and phone-sheet tests pass; 84 unit tests pass.
+
+## D17: The business loop: selling AI treasury reports through 1Click (2026-11-06, user decision)
+
+The track asks for an autonomous business that earns, spends on AI, settles through NEAR Intents and
+splits revenue. The movement loop showed the controls, but nothing was sold and no model was called.
+The user chose this product: **Athera sells AI-written treasury reports on NEAR accounts.** Payment
+goes through 1Click, AI calls run on NEAR AI Cloud, and every step stays under the same policy engine.
+
+- **Sale loop** (`Orchestrator.runSale`, `pnpm demo --mode=sale`, and "Sell a treasury report" on /demo).
+  Each step below is written to the ledger as its own entry.
+  1. **Offer.** Sales offers the report: a `sale_offer` proposal, checked by `pricing_rule` against
+     `sales.min/max_price_usd`.
+  2. **Quote.** 1Click quotes `EXACT_OUTPUT`: exactly the price in USDC, delivered to the revenue
+     account inside the verifier (`depositType` and `recipientType` are both `INTENTS`).
+  3. **Payment.** The customer pays the quote's deposit address with a `service_purchase` transfer
+     intent. It passes `purchase_rule` and every movement rule (limits, reserve, drawdown):
+     - the quote must pay Athera's revenue account;
+     - it must settle in the configured asset;
+     - it must not have expired;
+     - the payment must be exactly `amountIn` of the origin asset, sent to the deposit address.
+  4. **Swap.** 1Click's solvers do the swap. Athera never routes or bridges, as the blueprint
+     requires. If the status ends `REFUNDED` or `FAILED`, a failed sale is logged and nothing is split.
+  5. **Revenue split.** Accounting splits the USDC received (70/30). Reconcile treats a confirmed
+     `sale` like a collected fee, so a halted split is finished later.
+  6. **Report.** The Analyst reads the subject account from public RPC: NEAR balance, intents.near
+     holdings and 1Click USD prices. It then writes the report with one metered AI call and saves it
+     to `data/reports/<id>.json`, served at `/reports/<id>`.
+- **Metered AI.** Every model call is first an `inference_spend` proposal. Before the call:
+  - its worst case (estimated prompt tokens plus the full output budget, at the price listed in
+    `/v1/models`) is checked against `inference.approved_models`, `inference.max_call_usd` and the
+    daily budget;
+  - after the call, the billed cost from the reported token usage is written as a `cost` entry.
+
+  `deriveState` adds today's `cost` entries, so the budget is enforced from the ledger alone. The
+  control room meter now shows real spend.
+- **Who pays in the demo.** The only account Athera can sign for is the treasury, so the self-run
+  demo has the treasury buy a report on itself. External customers paying from any chain need an
+  order page plus a fulfilment step that watches 1Click status. That is not built (see README gaps).
+- **Order of steps.** The revenue split runs before the report, because it depends only on money
+  already received. If the AI call is blocked or returns unusable output, the sale and split stand.
+  The run then ends `blocked` or `failed` with no report, and the call's cost is still recorded.
+  There is no automatic report retry yet.
+- **Config v3.** v3 adds the following:
+  - USDC as an approved asset;
+  - `sales` and `inference` sections;
+  - `sales` and `analyst` agent roles;
+  - `service_purchase` for the treasury.
+
+  Older versions stay loadable, because `sales`, `inference` and missing agent roles are optional
+  in the schema. A version without them sells nothing and approves no model.
+
+  `pnpm verify` now loads `config.yaml` from git by the hash each check recorded, so all 21
+  v2-era checks still recompute. Rules added since then must evaluate to `skip` for those
+  proposals.
+- **Verified so far.** These checks have passed:
+  - 112 unit tests, including 6 for the sale loop against fake 1Click, NEAR AI and chain;
+  - typecheck and the production build;
+  - a mainnet dry check: a real 1Click quote passed `pricing_rule`, `purchase_rule` and all
+    movement rules, with nothing signed.
+
+- **First mainnet sale (2026-11-06, run `r261106002713ca7b`).**
+  - **Money:** the payment settled, 1Click delivered 0.05 USDC to the revenue account, and the
+    split paid 0.035 / 0.015.
+  - **Report:** the report call on `z-ai/glm-5.3-flash` used all 1,200 output tokens on hidden
+    reasoning and returned no JSON. Its $0.000622 cost is in the ledger.
+  - **Fix:** reports now default to `anthropic/claude-haiku-5-5` (already approved, so the policy
+    did not change), with a 2,500-token budget. `Orchestrator.retryReport` and
+    `pnpm demo --mode=report --sale=<id>` write a missing report from the ledger alone, with no
+    second payment, and refuse a sale that already has a report.
+  - **Result:** the retry wrote report `r261106003131c6rf-report` for $0.000539.
+  - **Guard:** a sale now makes one metered AI check before any money moves, so an AI account
+    without credits (HTTP 402, seen during setup) stops the sale before payment.

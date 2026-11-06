@@ -167,7 +167,7 @@ export default function SecurityPage() {
             </li>
             <li>Runs on NEAR mainnet with tiny amounts, because NEAR Intents has no testnet (D1).</li>
             <li>Same-asset transfers inside the verifier only. No solver routing, swaps or cross-chain movement is demonstrated (D7).</li>
-            <li>The treasury agent is rule-based and makes no model calls; the inference budget is enforced but unused (D8).</li>
+            <li>The treasury agent is rule-based. The Analyst is the only agent that calls a model, and every call is checked against the approved models, a per-call cap and the daily budget before it is made (D17).</li>
             <li>
               The ledger is a hash-chained file on one server. Edits to past entries are detectable; a wholesale rewrite by the server operator is detectable only by
               comparing settlements with the chain (memos and verifier events), not for off-chain entries such as blocks.

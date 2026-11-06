@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /**
- * POST { mode: "loop" | "invalid" } starts scripts/demo/run.ts as a separate process. The web
+ * POST { mode: "loop" | "invalid" | "sale" } starts scripts/demo/run.ts as a separate process. The web
  * server never loads signing keys: the child reads .env itself, and its ledger writes reach the
  * UI through /api/stream. Refused while halted or while another run holds the ledger lock.
  */
@@ -18,8 +18,8 @@ export async function POST(req: Request) {
   const denied = checkOperator(req);
   if (denied) return denied;
   const body = (await req.json().catch(() => ({}))) as { mode?: unknown };
-  const mode = body.mode === "invalid" ? "invalid" : body.mode === "loop" ? "loop" : null;
-  if (!mode) return Response.json({ error: "mode must be loop or invalid" }, { status: 400 });
+  const mode = body.mode === "invalid" ? "invalid" : body.mode === "loop" ? "loop" : body.mode === "sale" ? "sale" : null;
+  if (!mode) return Response.json({ error: "mode must be loop, invalid or sale" }, { status: 400 });
   const ks = killSwitchState();
   if (ks.engaged || ks.configFlag) return Response.json({ error: `Kill switch is engaged (${ks.reason ?? "config.yaml"}). Release it on the server first.` }, { status: 409 });
   const active = readRunLock();

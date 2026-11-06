@@ -38,13 +38,24 @@ agents:
   treasury: [transfer]
   accounting: [fee, revenue_split]
   procurement: [vendor_payment]
-  sales: []
+  sales: [sale_offer]
+  analyst: [inference_spend]
+sales:
+  product: treasury_report
+  min_price_usd: "0.05"
+  max_price_usd: "0.50"
+  settle_asset: "nep141:wrap.near"
+inference:
+  provider: cloud-api.near.ai
+  approved_models: [z-ai/glm-5.3-flash]
+  max_call_usd: "0.02"
 `;
 
 export const engine = (yaml = FIXTURE_YAML) => PolicyEngine.fromSource(yaml);
 
 export function state(over: Partial<PolicyState> = {}): PolicyState {
   return {
+    now: new Date("2026-11-05T12:00:00.000Z"),
     halted: false,
     movedToday: {},
     inferenceTodayMicros: 0n,

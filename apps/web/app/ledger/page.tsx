@@ -16,8 +16,8 @@ import { readLedger } from "../../lib/ledger";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Ledger" };
 
-const TYPES: LedgerEntry["type"][] = ["policy_check", "proposal", "intent_created", "intent_submitted", "settlement", "fee", "payout", "cost", "halt", "error"];
-const AGENTS: LedgerEntry["agent"][] = ["treasury", "accounting", "policy", "settlement", "operator", "system", "procurement", "sales"];
+const TYPES: LedgerEntry["type"][] = ["policy_check", "proposal", "quote", "intent_created", "intent_submitted", "settlement", "sale", "fee", "payout", "cost", "report", "halt", "error"];
+const AGENTS: LedgerEntry["agent"][] = ["treasury", "sales", "analyst", "accounting", "policy", "settlement", "operator", "system", "procurement"];
 const PAGE = 50;
 
 // Native <select> styled like shadcn inputs: keyboard and screen-reader behaviour for free, no JS.

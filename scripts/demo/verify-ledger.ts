@@ -4,7 +4,8 @@ import { readLedgerFile, verifyChain } from "@athera/ledger";
 import { NearRpc, DEFAULT_MAINNET_RPCS, parseDip4 } from "@athera/settlement";
 import { PolicyEngine } from "@athera/policy";
 import { deriveState } from "@athera/agents";
-import { CONFIG_PATH, LEDGER_PATH } from "./wire.ts";
+import { execFileSync } from "node:child_process";
+import { CONFIG_PATH, LEDGER_PATH, ROOT } from "./wire.ts";
 
 // Every execute_intents tx is submitted by the treasury's function-call key (docs/decisions.md D4).
 const submitter = PolicyEngine.load(CONFIG_PATH).config.accounts.treasury;
@@ -30,13 +31,30 @@ for (const e of entries.filter((x) => x.type === "settlement" && x.result === "c
 // Re-run every recorded policy check (pass AND block) from the ledger alone: the proposal from
 // the upstream entry, state rebuilt from the ledger prefix plus the balance snapshot the check
 // recorded, and config.yaml at the recorded policy hash. Results and per-rule statuses must match.
-const engine = PolicyEngine.load(CONFIG_PATH);
+// Every committed version of config.yaml, keyed by the hash checks record; plus the working copy.
+const engines = new Map<string, PolicyEngine>();
+const current = PolicyEngine.load(CONFIG_PATH);
+engines.set(current.ref.hash, current);
+try {
+  const git = (args: string[]) => execFileSync("git", ["-C", ROOT, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  for (const commit of git(["log", "--format=%H", "--", "config.yaml"]).trim().split("\n").filter(Boolean)) {
+    try {
+      const e = PolicyEngine.fromSource(git(["show", `${commit}:config.yaml`]));
+      if (!engines.has(e.ref.hash)) engines.set(e.ref.hash, e);
+    } catch {
+      /* a committed version that no longer parses is reported as skipped below */
+    }
+  }
+} catch {
+  /* not a git checkout: only the current version can be recomputed */
+}
 let rechecked = 0;
 let skipped = 0;
 const byId = new Map(entries.map((e) => [e.id, e]));
 for (const e of entries.filter((x) => x.type === "policy_check")) {
-  if (e.policy.hash !== engine.ref.hash) {
-    skipped++; // older policy version: needs config.yaml at that hash from git history
+  const engine = engines.get(e.policy.hash);
+  if (!engine) {
+    skipped++; // config.yaml at that hash is in neither the working copy nor git history
     continue;
   }
   const payload = e.payload as { rules: { rule: string; status: string }[]; balances?: Record<string, string>; proposal?: unknown };
@@ -45,12 +63,18 @@ for (const e of entries.filter((x) => x.type === "policy_check")) {
   const balances = Object.fromEntries(Object.entries(payload.balances ?? {}).map(([k, v]) => [k, BigInt(v)]));
   const state = deriveState(entries.slice(0, e.seq), balances, halted, new Date(e.ts));
   const again = engine.validate(proposal, state);
-  const same = again.result === e.result && JSON.stringify(again.rules.map((r) => [r.rule, r.status])) === JSON.stringify(payload.rules.map((r) => [r.rule, r.status]));
+  // Every recorded rule must recompute to the same status. Rules added in later code versions
+  // were not evaluated then; they must skip (not apply) for the proposal kinds recorded earlier.
+  const recorded = new Map(payload.rules.map((r) => [r.rule, r.status]));
+  const same =
+    again.result === e.result &&
+    again.rules.every((r) => (recorded.has(r.rule) ? recorded.get(r.rule) === r.status : r.status === "skip")) &&
+    payload.rules.every((r) => again.rules.some((x) => x.rule === r.rule));
   if (!same) {
     bad++;
     console.log(`BAD ${e.id} policy_check recorded ${e.result}, recomputed ${again.result}: ${again.summary}`);
   }
   rechecked++;
 }
-console.log(`policy checks recomputed from the ledger: ${rechecked} match${bad ? " (see BAD above)" : ""}${skipped ? `, ${skipped} skipped (older policy version)` : ""}`);
+console.log(`policy checks recomputed from the ledger: ${rechecked} match${bad ? " (see BAD above)" : ""}${skipped ? `, ${skipped} skipped (config version not found)` : ""}`);
 process.exit(bad ? 1 : 0);

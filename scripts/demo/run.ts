@@ -2,6 +2,10 @@
 // pnpm demo --halt    — same, but a SEPARATE OS process engages the kill switch mid-loop
 // --mode=loop         — custody, reconcile, valid loop only (used by the web UI)
 // --mode=invalid      — the invalid action only: a policy block, nothing signed (web UI)
+// --mode=sale         — the business loop: sell a treasury report, paid via 1Click in USDC,
+//                       revenue split, AI report written (needs NEARAI_API_KEY in .env)
+// --subject=<account> — the account the report is about (default: the treasury)
+// --mode=report --sale=<ledger id> — write the report for a paid sale that has none (no payment)
 // --run-id=<id>       — run id prefix chosen by the caller so the UI can follow it live
 //
 // Order: custody preflight → reconcile leftovers → invalid action (blocked) → valid loop
@@ -12,13 +16,13 @@ import { parseUnits } from "@athera/policy";
 import type { LedgerEntry } from "@athera/ledger";
 import { newRunId } from "@athera/agents";
 import { acquireRunLock } from "./lock.ts";
-import { HALT_PATH, LEDGER_PATH, LOCK_PATH, ROOT, wire } from "./wire.ts";
+import { HALT_PATH, LEDGER_PATH, LOCK_PATH, REPORT_MODEL, ROOT, wire } from "./wire.ts";
 
 const t0 = Date.now();
 const haltMode = process.argv.includes("--halt");
 const arg = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split("=")[1];
 const mode = arg("mode") ?? "all";
-if (!["all", "loop", "invalid"].includes(mode)) throw new Error(`unknown --mode=${mode}`);
+if (!["all", "loop", "invalid", "sale", "report"].includes(mode)) throw new Error(`unknown --mode=${mode}`);
 const runId = arg("run-id") ?? newRunId();
 if (!/^r[0-9a-z]{8,24}$/.test(runId)) throw new Error("bad --run-id");
 const base = (process.env["ATHERA_PUBLIC_URL"] || "http://localhost:3000").replace(/\/$/, "");
@@ -57,6 +61,53 @@ for (const e of rec.entries) console.log(line(e));
 if (rec.status !== "completed") {
   console.error(`  reconcile ${rec.status}; stopping`);
   process.exit(1);
+}
+
+if (mode === "report") {
+  const saleId = arg("sale");
+  if (!saleId) throw new Error("--mode=report needs --sale=<ledger id of the confirmed sale>");
+  console.log(`\n3 report for sale ${saleId} (no payment; one metered AI call)  [${secs()}s]`);
+  const r = await w.orchestrator.retryReport(saleId, runId);
+  for (const e of r.entries) console.log(line(e));
+  if (r.status === "completed" && r.reportId) console.log(`  report        ${base}/reports/${r.reportId}`);
+  console.log(`\n${r.status.toUpperCase()}${r.status === "failed" ? `: ${r.error}` : ""} · ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+  lock.release();
+  process.exit(r.status === "completed" ? 0 : 1);
+}
+
+if (mode === "sale") {
+  if (!w.ai.hasKey) {
+    console.error("NEARAI_API_KEY is not set in .env; the analyst cannot write the report. See docs/setup.md.");
+    lock.release();
+    process.exit(2);
+  }
+  // Before any money moves: one tiny metered call proves the AI account can actually be billed,
+  // so a customer never pays for a report that cannot be written.
+  const { meteredChat } = await import("@athera/agents");
+  try {
+    const probe = await meteredChat(
+      { policy: w.policy, ledger: w.ledger, killSwitch: w.killSwitch, ai: w.ai },
+      { runId, proposalId: `${runId}-probe`, agent: "analyst", purpose: "AI availability check before the sale", model: process.env["ATHERA_REPORT_MODEL"] || REPORT_MODEL, messages: [{ role: "user", content: "Reply OK." }], maxTokens: 4 },
+    );
+    if (probe.kind === "blocked") throw new Error(probe.check.summary);
+  } catch (e) {
+    console.error(`AI is not available, so no sale was started and nothing was paid: ${String(e).slice(0, 240)}`);
+    lock.release();
+    process.exit(2);
+  }
+  const subject = arg("subject") ?? cfg.accounts.treasury;
+  console.log(`\n3 sale: ${cfg.sales?.product} on ${subject}, paid by ${cfg.accounts.treasury} via 1Click  [${secs()}s]`);
+  const sale = await w.orchestrator.runSale({ customer: cfg.accounts.treasury, subject }, runId);
+  for (const e of sale.entries) console.log(line(e));
+  for (const e of sale.entries.filter((x) => x.type === "settlement" || x.type === "sale")) {
+    for (const url of e.refs?.explorer ?? []) console.log(`  ${e.type.padEnd(13)} ${url}`);
+  }
+  if (sale.status === "completed" && sale.reportId) console.log(`  report        ${base}/reports/${sale.reportId}`);
+  console.log(`  ledger JSON   ${base}/api/ledger?run=${sale.runId}`);
+  const total = (Date.now() - t0) / 1000;
+  console.log(`\n${sale.status.toUpperCase()}${sale.status === "failed" ? `: ${sale.error}` : ""} · ${total.toFixed(1)}s${total > 120 ? " · OVER the 2-minute budget" : ""}`);
+  lock.release();
+  process.exit(sale.status === "completed" ? 0 : 1);
 }
 
 if (mode === "all") {

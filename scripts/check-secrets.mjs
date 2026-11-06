@@ -12,7 +12,9 @@ const files = execFileSync("git", all ? ["ls-files"] : ["diff", "--cached", "--n
 
 const patterns = [
   // NEAR secret keys: ed25519: followed by 64+ base58 chars (public keys are ~44 chars).
-  { name: "NEAR ed25519 secret key", re: /ed25519:[1-9A-HJ-NP-Za-km-z]{70,100}/ },
+  // A 64-byte ed25519 *signature* has the same base58 length; values under a "signature" JSON key
+  // (e.g. 1Click quote signatures in the ledger) are public and skipped.
+  { name: "NEAR ed25519 secret key", re: /(?<!"signature"\s*:\s*")ed25519:[1-9A-HJ-NP-Za-km-z]{70,100}/ },
   { name: "secp256k1 secret key", re: /secp256k1:[1-9A-HJ-NP-Za-km-z]{40,}/ },
   { name: "PEM private key", re: /-----BEGIN [A-Z ]*PRIVATE KEY-----/ },
   { name: "0x 32-byte hex secret", re: /\b(private|secret)[_-]?key\W{0,4}["'=: ]+0x[0-9a-fA-F]{64}\b/i },
