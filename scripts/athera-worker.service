@@ -1,0 +1,19 @@
+# systemd user service for `pnpm worker` (docs/hosting.md). Install:
+#   mkdir -p ~/.config/systemd/user && cp scripts/athera-worker.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now athera-worker
+#   loginctl enable-linger "$USER"     # keep it running after you log out and across reboots
+# Logs: journalctl --user -u athera-worker -f
+[Unit]
+Description=Athera worker: syncs the Vercel site and fulfils paid orders
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=%h/athera-treasury
+Environment=PATH=%h/.local/node/bin:/usr/bin:/bin
+ExecStart=%h/.local/node/bin/node --import tsx scripts/demo/worker.ts
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=default.target
