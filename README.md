@@ -46,8 +46,9 @@ halts (one from a separate operator process). `pnpm verify` re-checks all of it 
   0.05 USDC reached the revenue account and was split 0.035 / 0.015. The first model (GLM) spent its
   whole output budget on reasoning, so the report was written afterwards with
   `pnpm demo --mode=report`. That run used Claude Haiku, cost $0.000539 and did not pay again.
-- **In the demo, the customer is the treasury itself.** Athera can only sign for accounts it holds keys
-  for. Customers paying from other chains need an order page that is not built yet.
+- **Outside customers can order and pay from almost any chain** at `/buy` ([D18](docs/decisions.md)):
+  1Click gives them a deposit address on their own chain and delivers USDC to Athera. Order creation
+  and quotes are tested live (including a Base USDC quote); no outside customer has paid yet.
 - **Routing is 1Click's job.** The original movement loop uses same-asset `transfer` intents; the sale
   loop's swap is done by 1Click's solvers, never by Athera's agents ([D7](docs/decisions.md)).
 - **The treasury agent is rule-based.** The AI agent is the Analyst. Its every call is policy-checked
@@ -223,5 +224,5 @@ checked against the chain.
 | Mobile checked on a device | Emulation and automated checks only so far |
 | Public ledger hosting | Not deployed yet |
 | Solver-routed or cross-chain intents | Sale loop uses 1Click's solvers for a wNEAR → USDC swap; run once on mainnet (D17) |
-| Customers paying from other chains | Not built: no order page or fulfilment watcher yet (D17) |
-| Automatic report retry | Manual: `pnpm demo --mode=report --sale=<id>` (D17) |
+| Customers paying from other chains | Built: `/buy` and order fulfilment (D18); no outside payment yet |
+| Automatic report retry | Reconcile retries up to 3 times per sale, then `--mode=report` (D18) |

@@ -6,6 +6,8 @@
 //                       revenue split, AI report written (needs NEARAI_API_KEY in .env)
 // --subject=<account> — the account the report is about (default: the treasury)
 // --mode=report --sale=<ledger id> — write the report for a paid sale that has none (no payment)
+// --mode=fulfil [--order=<id>] — fulfil outside customers' orders that 1Click reports as paid
+//                       (all open orders when --order is omitted; safe to run from cron)
 // --run-id=<id>       — run id prefix chosen by the caller so the UI can follow it live
 //
 // Order: custody preflight → reconcile leftovers → invalid action (blocked) → valid loop
@@ -22,7 +24,7 @@ const t0 = Date.now();
 const haltMode = process.argv.includes("--halt");
 const arg = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split("=")[1];
 const mode = arg("mode") ?? "all";
-if (!["all", "loop", "invalid", "sale", "report"].includes(mode)) throw new Error(`unknown --mode=${mode}`);
+if (!["all", "loop", "invalid", "sale", "report", "fulfil"].includes(mode)) throw new Error(`unknown --mode=${mode}`);
 const runId = arg("run-id") ?? newRunId();
 if (!/^r[0-9a-z]{8,24}$/.test(runId)) throw new Error("bad --run-id");
 const base = (process.env["ATHERA_PUBLIC_URL"] || "http://localhost:3000").replace(/\/$/, "");
@@ -61,6 +63,22 @@ for (const e of rec.entries) console.log(line(e));
 if (rec.status !== "completed") {
   console.error(`  reconcile ${rec.status}; stopping`);
   process.exit(1);
+}
+
+if (mode === "fulfil") {
+  const one = arg("order");
+  const open = one ? [one] : w.orders.list().filter((o) => o.status === "awaiting_payment" || o.status === "paid").map((o) => o.id);
+  console.log(`\n3 fulfil ${open.length} order(s)  [${secs()}s]`);
+  let bad = 0;
+  for (const [i, id] of open.entries()) {
+    const r = await w.orchestrator.fulfilOrder(id, open.length > 1 ? `${runId}${i}` : runId);
+    for (const e of r.entries) console.log(line(e));
+    const note = r.status === "completed" && r.reportId ? `report ${base}/reports/${r.reportId}` : r.status === "failed" ? r.error : r.status;
+    console.log(`  order ${id}: ${r.status} · ${note}`);
+    if (r.status !== "completed" && !(r.status === "failed" && /payment not complete/.test(r.error))) bad++;
+  }
+  lock.release();
+  process.exit(bad ? 1 : 0);
 }
 
 if (mode === "report") {

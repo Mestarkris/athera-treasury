@@ -100,6 +100,16 @@ delivers $0.05 USDC to the revenue account, which is then split 70/30. One AI ca
 by policy, writes the report. The report is at `/reports/<id>`. Add `--subject=<account>` to report on
 another account.
 
+### Orders from outside customers
+
+Customers order at `/buy` on the web app and pay 1Click from their own chain. The order page
+starts fulfilment once 1Click reports the payment as complete. To also catch orders whose
+customer closed the page, run this every few minutes, for example from cron:
+
+```bash
+pnpm demo --mode=fulfil
+```
+
 ## Revoking
 
 From your wallet: delete the `TREASURY_PK` access key from your account, and call

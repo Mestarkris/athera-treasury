@@ -306,3 +306,43 @@ goes through 1Click, AI calls run on NEAR AI Cloud, and every step stays under t
   - **Result:** the retry wrote report `r261106003131c6rf-report` for $0.000539.
   - **Guard:** a sale now makes one metered AI check before any money moves, so an AI account
     without credits (HTTP 402, seen during setup) stops the sale before payment.
+
+## D18: Customers paying from any chain, and reports that retry themselves (2026-11-06)
+
+- **Orders** (`/buy`, `/orders/<id>`, `createOrder`, `Orchestrator.fulfilOrder`, `pnpm demo --mode=fulfil`).
+  - **Creating an order (web server, no keys):**
+    1. The server checks that the subject account exists on mainnet.
+    2. `pricing_rule` checks the offer.
+    3. 1Click returns an `ORIGIN_CHAIN` quote, so the customer pays from their own chain. The
+       quote is `EXACT_OUTPUT`: the price in USDC to the revenue account inside intents.near,
+       with refunds going to the customer's address on the paying chain.
+  - **Fulfilling it (run process):** this starts only when 1Click reports `SUCCESS` for the
+    deposit address. It records the offer, its check, the quote and the sale, then pays the
+    split and writes the report. Athera signs nothing for the customer; the only signature is
+    the revenue account's split.
+  - **No double recording:** an order whose deposit address already has a sale is never
+    recorded twice.
+- **Bridge minimums:** 1Click refuses tiny bridged amounts. For example, USDC from Base needed
+  about $0.15. When 1Click names a minimum, the order is re-quoted at that minimum plus 5%,
+  rounded up to the cent, and only if that stays within `sales.max_price_usd`. That price passes
+  `pricing_rule` again. Otherwise the customer is told to pay with a NEAR token. Checked live: a
+  Base USDC order was quoted at $0.16, with a Base deposit address.
+- **Who starts fulfilment:** the order page polls status and asks the server to fulfil once paid.
+  The server only spawns the run when all of these hold:
+  - 1Click itself says `SUCCESS`;
+  - the kill switch is off;
+  - no run holds the ledger;
+  - the order has not been started in the last 20 seconds.
+
+  For anything a closed browser missed, `pnpm demo --mode=fulfil` (all open orders) is safe to
+  run from cron.
+- **Privacy:** orders hold the customer's refund address, so `data/orders/` is gitignored. Pages
+  and APIs show that address only shortened. Reports use public chain data only and are public
+  by id.
+- **Reports retry automatically:** reconcile, which runs at the start of every run, writes
+  reports still owed for paid sales. Each sale gets at most 3 costed AI attempts
+  (`MAX_REPORT_ATTEMPTS`, counted from the ledger); after that an operator uses
+  `--mode=report`. A failed attempt is logged and does not stop the run.
+- **Limits:** order creation is rate-limited in memory (10 per hour per client IP), which is
+  enough for a single server. Unauthenticated 1Click quotes carry a 0.25% fee: a $0.05 order on
+  NEAR asks 0.050506 USDC.

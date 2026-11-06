@@ -4,7 +4,7 @@ import { MemoryKillSwitch, PolicyEngine, parseUnits } from "@athera/policy";
 import { Ed25519Key, Settlement, type IntentSigner } from "@athera/settlement";
 import { FIXTURE_YAML, W } from "../../policy/test/fixtures.ts";
 import { FakeChain } from "../../settlement/test/fake-chain.ts";
-import { MemoryReportStore, NearAiClient, OneClickClient, Orchestrator, pendingAccounting, type ChainReader, type FetchLike } from "../src/index.ts";
+import { MemoryOrderStore, MemoryReportStore, NearAiClient, OneClickClient, Orchestrator, createOrder, deriveState, pendingAccounting, pendingReports, type ChainReader, type FetchLike } from "../src/index.ts";
 
 const USDC = "nep141:usdc.near";
 const DEPOSIT = "d".repeat(64);
@@ -80,7 +80,9 @@ function setup(o: FakeOpts = {}, yaml = SALE_YAML) {
   });
   const f = fakeServices(o);
   const reports = new MemoryReportStore();
+  const orders = new MemoryOrderStore();
   const sales = {
+    orders,
     oneclick: new OneClickClient({ baseUrl: "https://1click.test/v0", fetch: f.oneclickFetch }),
     ai: new NearAiClient("sk-test", { baseUrl: "https://ai.test/v1", fetch: f.aiFetch }),
     rpc: f.rpc,
@@ -88,7 +90,7 @@ function setup(o: FakeOpts = {}, yaml = SALE_YAML) {
     poll: { sleep: async () => {} },
   };
   const orch = new Orchestrator({ policy, settlement, ledger, killSwitch, readBalances, sales });
-  return { orch, ledger, reports, killSwitch, f, treasurySign, revenueSign };
+  return { orch, ledger, reports, orders, killSwitch, f, treasurySign, revenueSign, policy, sales };
 }
 
 const order = { customer: "dao-treasury.near", subject: "dao-treasury.near" };
@@ -185,5 +187,77 @@ describe("sale loop", () => {
     expect(rep.upstream).toContain(sale.id);
     expect(reports.list()).toHaveLength(1);
     expect((await orch2.retryReport(sale.id)).status).toBe("failed"); // never twice
+  });
+});
+
+describe("orders from outside customers", () => {
+  const mk = async (o: FakeOpts = {}) => {
+    const t = setup(o);
+    const { order } = await createOrder(
+      { policy: t.policy, oneclick: t.sales.oneclick, orders: t.orders, state: deriveState([], {}, false), accountExists: async () => true },
+      { subject: "client.near", originAsset: W, refundTo: "payer.near" },
+    );
+    return { ...t, order };
+  };
+
+  it("creates an order from a priced offer and an ORIGIN_CHAIN quote, signing nothing", async () => {
+    const { order, f, treasurySign, ledger } = await mk();
+    expect(order.status).toBe("awaiting_payment");
+    expect(order.deposit_address).toBe(DEPOSIT);
+    expect(f.quoteBodies[0]).toMatchObject({ depositType: "ORIGIN_CHAIN", refundType: "ORIGIN_CHAIN", refundTo: "payer.near", recipient: "athera-revenue.near", recipientType: "INTENTS", amount: "50000" });
+    expect(treasurySign).not.toHaveBeenCalled();
+    expect(ledger.all()).toHaveLength(0);
+  });
+
+  it("refuses an invalid account or a token 1Click does not list", async () => {
+    const t = setup();
+    const d = { policy: t.policy, oneclick: t.sales.oneclick, orders: t.orders, state: deriveState([], {}, false), accountExists: async () => true };
+    await expect(createOrder(d, { subject: "Not An Account!", originAsset: W, refundTo: "x" })).rejects.toThrow(/valid NEAR account/);
+    await expect(createOrder(d, { subject: "client.near", originAsset: "nep141:nope.near", refundTo: "x" })).rejects.toThrow(/does not list/);
+    await expect(createOrder({ ...d, accountExists: async () => false }, { subject: "ghost.near", originAsset: W, refundTo: "x" })).rejects.toThrow(/does not exist/);
+  });
+
+  it("fulfils a paid order: sale, split and report, with no treasury signature", async () => {
+    const { orch, order, orders, ledger, reports, treasurySign, revenueSign } = await mk();
+    const out = await orch.fulfilOrder(order.id);
+    expect(out.status).toBe("completed");
+    expect(treasurySign).not.toHaveBeenCalled(); // the customer paid; Athera only splits revenue
+    expect(revenueSign).toHaveBeenCalledTimes(1);
+    expect(ledger.all().map((e) => e.type)).toEqual(
+      expect.arrayContaining(["proposal", "policy_check", "quote", "sale", "payout", "cost", "report"]),
+    );
+    expect(orders.get(order.id)?.status).toBe("fulfilled");
+    expect(reports.get(orders.get(order.id)!.report_id!)?.subject).toBe("client.near");
+    // Fulfilling again records nothing new.
+    const n = ledger.all().length;
+    expect((await orch.fulfilOrder(order.id)).status).toBe("completed");
+    expect(ledger.all()).toHaveLength(n);
+  });
+
+  it("does nothing while the payment is pending, and marks a refund", async () => {
+    const pending = await mk({ status: "PENDING_DEPOSIT" });
+    const out = await pending.orch.fulfilOrder(pending.order.id);
+    expect(out.status).toBe("failed");
+    expect(pending.ledger.all()).toHaveLength(0);
+    expect(pending.orders.get(pending.order.id)?.status).toBe("awaiting_payment");
+    const refunded = await mk({ status: "REFUNDED" });
+    await refunded.orch.fulfilOrder(refunded.order.id);
+    expect(refunded.orders.get(refunded.order.id)?.status).toBe("refunded");
+    expect(refunded.ledger.all()).toHaveLength(0);
+  });
+});
+
+describe("reconcile writes reports owed for paid sales", () => {
+  it("retries a missing report, and stops after three costed attempts", async () => {
+    const bad = setup({ aiReply: "no json" });
+    expect((await bad.orch.runSale(order)).status).toBe("failed");
+    expect(pendingReports(bad.ledger.all())).toEqual([{ sale: expect.any(String), attempts: 1 }]);
+    await bad.orch.reconcile();
+    await bad.orch.reconcile();
+    expect(pendingReports(bad.ledger.all())).toEqual([]); // 3 attempts made, left for an operator
+    const n = bad.ledger.all().length;
+    await bad.orch.reconcile();
+    expect(bad.ledger.all()).toHaveLength(n);
+    expect(bad.ledger.all().filter((e) => e.type === "payout")).toHaveLength(2); // never re-split
   });
 });

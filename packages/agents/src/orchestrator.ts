@@ -3,13 +3,14 @@ import { nearblocksTx } from "@athera/ledger";
 import { HaltError, fmt, type KillSwitch, type PolicyCheck, type PolicyEngine, type Proposal } from "@athera/policy";
 import type { CreatedIntent, Settlement, SettledIntent, SubmittedIntent } from "@athera/settlement";
 import { AccountingAgent, type SettledBasis } from "./accounting.ts";
-import { deriveState, pendingAccounting, type MovementPayload } from "./state.ts";
+import { deriveState, pendingAccounting, pendingReports, type MovementPayload } from "./state.ts";
 import { TreasuryAgent, type TreasuryInstruction } from "./treasury.ts";
 import { meteredChat } from "./ai/metered.ts";
 import type { NearAiClient } from "./ai/nearai.ts";
 import { gatherFacts, parseAnalysis, reportPrompt, type ChainReader, type Report, type ReportStore } from "./sales/analyst.ts";
 import type { OneClickClient, StatusResult } from "./sales/oneclick.ts";
-import { SalesAgent, type Order } from "./sales/sales.ts";
+import { SalesAgent, type SaleOrder } from "./sales/sales.ts";
+import type { Order, OrderStore } from "./sales/orders.ts";
 
 /** What the sale loop needs on top of the movement loop. */
 export interface SaleDeps {
@@ -17,6 +18,8 @@ export interface SaleDeps {
   readonly ai: NearAiClient;
   readonly rpc: ChainReader;
   readonly reports: ReportStore;
+  /** Orders from outside customers (created by the web app, fulfilled here). */
+  readonly orders?: OrderStore;
   /** Model for the report; must be in config inference.approved_models. */
   readonly model?: string;
   /** Output token budget for the report call. */
@@ -77,7 +80,7 @@ export class Orchestrator {
    * the Analyst reads the subject's chain data and writes the report with a metered AI call
    * (inference_budget) → Accounting splits the USDC revenue per config.
    */
-  async runSale(order: Order, runId = newRunId()): Promise<LoopOutcome> {
+  async runSale(order: SaleOrder, runId = newRunId()): Promise<LoopOutcome> {
     const sd = this.d.sales;
     if (!sd) throw new Error("sale loop needs SaleDeps (1Click, NEAR AI, RPC, report store)");
     const cfg = this.d.policy.config;
@@ -187,6 +190,101 @@ export class Orchestrator {
   }
 
   /**
+   * Fulfil an outside customer's order once 1Click reports SUCCESS for its deposit address:
+   * record the offer and its policy check, the quote and the sale, pay the revenue split and write
+   * the report. Athera signs nothing on the customer's side; it only splits revenue it received.
+   * Idempotent: an order whose deposit address already has a sale in the ledger is not recorded twice.
+   */
+  async fulfilOrder(orderId: string, runId = newRunId()): Promise<LoopOutcome & { orderStatus?: Order["status"] }> {
+    const sd = this.d.sales;
+    const store = sd?.orders;
+    if (!sd || !store) throw new Error("fulfilling orders needs SaleDeps with an order store");
+    const cfg = this.d.policy.config;
+    const entries: LedgerEntry[] = [];
+    const log = this.logger(runId, entries);
+    const order = store.get(orderId);
+    if (!order) return { status: "failed", runId, entries, error: `no order ${orderId}` };
+    const touch = (patch: Partial<Order>) => {
+      const o = { ...store.get(orderId)!, ...patch, updated_at: new Date().toISOString() };
+      store.save(o);
+      return o.status;
+    };
+    try {
+      const existing = this.d.ledger.all().find((e) => e.type === "sale" && (e.payload as { deposit_address?: string } | undefined)?.deposit_address === order.deposit_address);
+      if (existing) {
+        const rep = this.d.ledger.all().find((e) => e.type === "report" && e.upstream?.includes(existing.id));
+        const reportId = (rep?.payload as { report_id?: string } | undefined)?.report_id;
+        if (reportId) return { status: "completed", runId, entries, reportId, orderStatus: touch({ status: "fulfilled", report_id: reportId, sale_entry: existing.id }) };
+        if (!pendingReports(this.d.ledger.all()).some((r) => r.sale === existing.id)) {
+          return { status: "failed", runId, entries, error: `report attempts for sale ${existing.id} are used up; an operator must retry with --mode=report` };
+        }
+        const out = await this.reportFor(existing.id, runId, log);
+        if (out.kind === "ok") return { status: "completed", runId, entries, reportId: out.reportId, orderStatus: touch({ status: "fulfilled", report_id: out.reportId, sale_entry: existing.id }) };
+        return out.kind === "blocked" ? { status: "blocked", runId, entries, check: out.check } : { status: "failed", runId, entries, error: out.error };
+      }
+
+      this.guard("order status", log);
+      const st = await sd.oneclick.status(order.deposit_address);
+      if (st.status === "REFUNDED" || st.status === "FAILED") {
+        return { status: "failed", runId, entries, error: `1Click swap ${st.status}`, orderStatus: touch({ status: st.status === "REFUNDED" ? "refunded" : "failed" }) };
+      }
+      if (st.status !== "SUCCESS") return { status: "failed", runId, entries, error: `payment not complete: ${st.status}` };
+      if (order.recipient !== cfg.accounts.revenue) throw new Error(`order pays ${order.recipient}, not this revenue account`);
+
+      // The offer as made when the order was created, re-checked now and recorded.
+      const offer: Proposal = {
+        ...this.salesAgent.offer(`${runId}-o`, { customer: "external", subject: order.subject, price_usd: order.price_usd }),
+        reason: `order ${order.id}: ${order.product} on ${order.subject}, paid in ${order.origin.symbol} on ${order.origin.chain}`,
+      };
+      const offerProposal = log({ agent: "sales", type: "proposal", result: "info", summary: `sales offered ${order.product} on ${order.subject} for $${order.price_usd} (order ${order.id}).`, refs: { proposal_id: offer.id }, payload: offer });
+      const offerCheck = await this.checkLogged(offer, log, [offerProposal.id]);
+      if (offerCheck.check.result === "block") return { status: "blocked", runId, entries, check: offerCheck.check };
+      const quoteEntry = log({
+        agent: "sales",
+        type: "quote",
+        result: "info",
+        summary: `1Click quoted ${order.amount_in_formatted} ${order.origin.symbol} on ${order.origin.chain} for ${fmt(cfg, order.destination_asset, BigInt(order.amount_out))} to ${order.recipient}, deposit ${order.deposit_address.slice(0, 10)}…`,
+        amount: this.amount(order.destination_asset, order.amount_out),
+        upstream: [offerCheck.entry.id],
+        payload: { order: order.id, deposit_address: order.deposit_address, origin: order.origin, amount_in: order.amount_in, amount_out: order.amount_out, deadline: order.deadline, signature: order.quote_signature },
+      });
+      const received = st.amountOut ?? order.amount_out;
+      const sale = log({
+        agent: "sales",
+        type: "sale",
+        result: "confirmed",
+        summary: `Sale: ${order.product} on ${order.subject}, ${fmt(cfg, order.destination_asset, BigInt(received))} received by ${order.recipient} (paid in ${order.origin.symbol} on ${order.origin.chain}).`,
+        amount: this.amount(order.destination_asset, received),
+        refs: {
+          proposal_id: offer.id,
+          ...(st.intentHashes[0] ? { intent_hash: st.intentHashes[0] } : {}),
+          ...(st.nearTxHashes[0] ? { tx_hash: st.nearTxHashes[0] } : {}),
+          explorer: st.nearTxHashes.map(nearblocksTx),
+        },
+        upstream: [quoteEntry.id],
+        payload: { order: order.id, deposit_address: order.deposit_address, status: st.status, intent_hashes: st.intentHashes, near_tx_hashes: st.nearTxHashes, price_usd: order.price_usd },
+      });
+      touch({ status: "paid", sale_entry: sale.id });
+
+      const splitBlock = await this.split(runId, log, { ref: sale.id, asset: order.destination_asset, amount: received });
+      if (splitBlock) return { status: "blocked", runId, entries, check: splitBlock };
+
+      const out = await this.reportFor(sale.id, runId, log);
+      if (out.kind === "blocked") return { status: "blocked", runId, entries, check: out.check };
+      if (out.kind === "failed") return { status: "failed", runId, entries, error: out.error, orderStatus: "paid" };
+      return { status: "completed", runId, entries, reportId: out.reportId, orderStatus: touch({ status: "fulfilled", report_id: out.reportId }) };
+    } catch (err) {
+      if (err instanceof HaltError) {
+        if (!entries.some((e) => e.type === "halt")) this.logHalt(log, err.stage, err.reason);
+        return { status: "halted", runId, entries, stage: err.stage };
+      }
+      const msg = err instanceof Error ? err.message : String(err);
+      log({ agent: "system", type: "error", result: "failed", summary: `Order ${orderId} stopped: ${msg}`, payload: { error: msg, order: orderId } });
+      return { status: "failed", runId, entries, error: msg };
+    }
+  }
+
+  /**
    * Write the report for a confirmed sale that has none (for example after the AI call failed).
    * Everything comes from the ledger: the sale entry and the offer in the same run. Nothing is
    * paid again; only the metered AI call is made.
@@ -196,10 +294,38 @@ export class Orchestrator {
     const log = this.logger(runId, entries);
     try {
       const all = this.d.ledger.all();
+      const done = all.find((e) => e.type === "report" && e.upstream?.includes(saleId));
+      if (done) throw new Error(`sale ${saleId} already has report entry ${done.id}`);
+      const out = await this.reportFor(saleId, runId, log, true);
+      if (out.kind === "blocked") return { status: "blocked", runId, entries, check: out.check };
+      if (out.kind === "failed") return { status: "failed", runId, entries, error: out.error };
+      return { status: "completed", runId, entries, reportId: out.reportId };
+    } catch (err) {
+      if (err instanceof HaltError) {
+        if (!entries.some((e) => e.type === "halt")) this.logHalt(log, err.stage, err.reason);
+        return { status: "halted", runId, entries, stage: err.stage };
+      }
+      const msg = err instanceof Error ? err.message : String(err);
+      log({ agent: "system", type: "error", result: "failed", summary: `Report retry stopped: ${msg}`, payload: { error: msg, sale: saleId } });
+      return { status: "failed", runId, entries, error: msg };
+    }
+  }
+
+  /**
+   * Write the report owed for a confirmed sale, rebuilding the order from the ledger (the sale
+   * entry and the offer in its run). Never pays again. Halts propagate; other errors are logged
+   * and returned unless `rethrow`.
+   */
+  private async reportFor(
+    saleId: string,
+    runId: string,
+    log: Log,
+    rethrow = false,
+  ): Promise<{ kind: "ok"; reportId: string } | { kind: "blocked"; check: PolicyCheck } | { kind: "failed"; error: string }> {
+    try {
+      const all = this.d.ledger.all();
       const sale = all.find((e) => e.id === saleId && e.type === "sale" && e.result === "confirmed");
       if (!sale) throw new Error(`no confirmed sale ${saleId} in the ledger`);
-      const done = all.find((e) => e.type === "report" && e.upstream?.includes(sale.id));
-      if (done) throw new Error(`sale ${saleId} already has report entry ${done.id}`);
       const offerEntry = all.find((e) => e.run_id === sale.run_id && e.type === "proposal" && (e.payload as Proposal | undefined)?.kind === "sale_offer");
       const offer = (offerEntry?.payload as Proposal | undefined)?.offer;
       if (!offerEntry || !offer) throw new Error(`no sale offer found for run ${sale.run_id}`);
@@ -213,17 +339,21 @@ export class Orchestrator {
         ...(offerCheck ? { offerRef: offerCheck.id } : {}),
         payment: { deposit_address: pay?.deposit_address ?? "", intent_hashes: pay?.intent_hashes ?? [], near_tx_hashes: pay?.near_tx_hashes ?? [] },
       });
-      if ("check" in delivered) return { status: "blocked", runId, entries, check: delivered.check };
-      return { status: "completed", runId, entries, reportId: delivered.reportId };
+      if ("check" in delivered) return { kind: "blocked", check: delivered.check };
+      return { kind: "ok", reportId: delivered.reportId };
     } catch (err) {
-      if (err instanceof HaltError) {
-        if (!entries.some((e) => e.type === "halt")) this.logHalt(log, err.stage, err.reason);
-        return { status: "halted", runId, entries, stage: err.stage };
-      }
+      if (rethrow || err instanceof HaltError) throw err;
       const msg = err instanceof Error ? err.message : String(err);
-      log({ agent: "system", type: "error", result: "failed", summary: `Report retry stopped: ${msg}`, payload: { error: msg, sale: saleId } });
-      return { status: "failed", runId, entries, error: msg };
+      log({ agent: "system", type: "error", result: "failed", summary: `Report for sale ${saleId} not written: ${msg}`, payload: { error: msg, sale: saleId } });
+      return { kind: "failed", error: msg };
     }
+  }
+
+  private markOrderFulfilled(saleId: string, reportId: string): void {
+    const store = this.d.sales?.orders;
+    const orderId = (this.d.ledger.all().find((e) => e.id === saleId)?.payload as { order?: string } | undefined)?.order;
+    const o = orderId ? store?.get(orderId) : undefined;
+    if (store && o) store.save({ ...o, status: "fulfilled", report_id: reportId, sale_entry: saleId, updated_at: new Date().toISOString() });
   }
 
   private async deliverReport(
@@ -401,6 +531,16 @@ export class Orchestrator {
         const blocked = await this.split(`${runId}-${handled}`, log, f);
         handled++;
         if (blocked) return { status: "blocked", runId, entries, handled };
+      }
+      // Paid sales still owed a report. A failed attempt is logged and does not stop the run;
+      // after MAX_REPORT_ATTEMPTS costed attempts the sale is left for an operator.
+      if (this.d.sales && this.d.sales.ai.hasKey) {
+        for (const r of pendingReports(this.d.ledger.all())) {
+          const out = await this.reportFor(r.sale, `${runId}-${handled}`, log);
+          handled++;
+          if (out.kind === "ok") this.markOrderFulfilled(r.sale, out.reportId);
+          if (out.kind === "blocked") return { status: "blocked", runId, entries, handled };
+        }
       }
       return { status: "completed", runId, entries, handled };
     } catch (err) {

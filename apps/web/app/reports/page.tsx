@@ -16,8 +16,8 @@ export default function ReportsPage() {
         title="Treasury reports"
         description={`What Athera sells: an AI-written review of a NEAR account's treasury, built only from public chain data. Each one is paid for through 1Click in USDC${sales ? ` ($${sales.min_price_usd}–$${sales.max_price_usd})` : ""}, and every payment, revenue split and AI cost is in the public ledger.`}
         actions={
-          <Link href="/demo" className="text-sm font-medium underline underline-offset-4">
-            Sell a report
+          <Link href="/buy" className="text-sm font-medium underline underline-offset-4">
+            Buy a report
           </Link>
         }
       />

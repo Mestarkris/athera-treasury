@@ -4,7 +4,7 @@
 import { parseUnits, type PolicyConfig, type Proposal } from "@athera/policy";
 import type { OneClickQuote } from "./oneclick.ts";
 
-export interface Order {
+export interface SaleOrder {
   /** Account that pays. In the self-run demo this is the treasury Athera has custody for. */
   readonly customer: string;
   /** Account the report is about. */
@@ -22,7 +22,7 @@ export class SalesAgent {
     return this.config.sales;
   }
 
-  offer(proposalId: string, o: Order, now = new Date()): Proposal {
+  offer(proposalId: string, o: SaleOrder, now = new Date()): Proposal {
     const c = this.config;
     return {
       id: proposalId,

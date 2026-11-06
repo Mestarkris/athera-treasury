@@ -10,3 +10,4 @@ data/ledger.local.jsonl
 .DS_Store
 data/RUN.lock
 data/runs/
+data/orders/

@@ -15,6 +15,8 @@ export interface QuoteRequest {
   readonly slippageBps?: number;
   readonly deadline: Date;
   readonly dry?: boolean;
+  /** INTENTS (default): paid from an Intents balance. ORIGIN_CHAIN: paid on the token's own chain. */
+  readonly depositType?: "INTENTS" | "ORIGIN_CHAIN";
 }
 
 export interface OneClickQuote {
@@ -22,6 +24,7 @@ export interface OneClickQuote {
   readonly originAsset: string;
   readonly destinationAsset: string;
   readonly amountIn: string;
+  readonly amountInFormatted: string;
   readonly amountInUsd: string;
   readonly amountOut: string;
   readonly amountOutUsd: string;
@@ -91,11 +94,11 @@ export class OneClickClient {
       swapType: "EXACT_OUTPUT",
       slippageTolerance: r.slippageBps ?? 100,
       originAsset: r.originAsset,
-      depositType: "INTENTS",
+      depositType: r.depositType ?? "INTENTS",
       destinationAsset: r.destinationAsset,
       amount: r.amountOut,
       refundTo: r.refundTo,
-      refundType: "INTENTS",
+      refundType: r.depositType === "ORIGIN_CHAIN" ? "ORIGIN_CHAIN" : "INTENTS",
       recipient: r.recipient,
       recipientType: "INTENTS",
       deadline: r.deadline.toISOString(),
@@ -121,6 +124,7 @@ export class OneClickClient {
       originAsset: r.originAsset,
       destinationAsset: r.destinationAsset,
       amountIn: str("amountIn"),
+      amountInFormatted: str("amountInFormatted"),
       amountInUsd: str("amountInUsd"),
       amountOut: str("amountOut"),
       amountOutUsd: str("amountOutUsd"),

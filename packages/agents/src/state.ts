@@ -87,3 +87,24 @@ export function pendingAccounting(entries: readonly LedgerEntry[]): {
     .map((e) => ({ ref: e.id, asset: e.amount!.asset, amount: e.amount!.value }));
   return { principals, fees };
 }
+
+/** AI attempts allowed per sale before reconcile stops retrying its report (each attempt is costed). */
+export const MAX_REPORT_ATTEMPTS = 3;
+
+/**
+ * Confirmed sales with no report entry yet, and fewer than MAX_REPORT_ATTEMPTS AI calls made for
+ * them (a `cost` entry whose upstream policy check names the sale). From the ledger alone.
+ */
+export function pendingReports(entries: readonly LedgerEntry[]): { sale: string; attempts: number }[] {
+  const reported = new Set(entries.filter((e) => e.type === "report").flatMap((e) => e.upstream ?? []));
+  const checkFor = new Map(entries.filter((e) => e.type === "policy_check").map((e) => [e.id, e.upstream ?? []]));
+  const attempts = new Map<string, number>();
+  for (const e of entries) {
+    if (e.type !== "cost") continue;
+    for (const up of checkFor.get(e.upstream?.[0] ?? "") ?? []) attempts.set(up, (attempts.get(up) ?? 0) + 1);
+  }
+  return entries
+    .filter((e) => e.type === "sale" && e.result === "confirmed" && !reported.has(e.id))
+    .map((e) => ({ sale: e.id, attempts: attempts.get(e.id) ?? 0 }))
+    .filter((x) => x.attempts < MAX_REPORT_ATTEMPTS);
+}

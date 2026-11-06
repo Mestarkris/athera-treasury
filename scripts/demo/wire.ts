@@ -1,7 +1,7 @@
 // Builds the real runtime from config.yaml + .env. The only place secrets are read.
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { FileReportStore, NearAiClient, OneClickClient, Orchestrator } from "@athera/agents";
+import { FileOrderStore, FileReportStore, NearAiClient, OneClickClient, Orchestrator } from "@athera/agents";
 import { FileLedger } from "@athera/ledger";
 import { FileKillSwitch, PolicyEngine, key } from "@athera/policy";
 import {
@@ -22,6 +22,7 @@ export const LEDGER_PATH = resolve(ROOT, process.env["ATHERA_LEDGER_PATH"] ?? "d
 export const HALT_PATH = resolve(ROOT, "data/HALT");
 export const LOCK_PATH = resolve(ROOT, "data/RUN.lock");
 export const REPORTS_DIR = resolve(ROOT, "data/reports");
+export const ORDERS_DIR = resolve(ROOT, "data/orders");
 /**
  * Report writer. GLM-5.3-flash reasons before answering and can spend the whole output budget on
  * hidden reasoning (seen on mainnet, run r261106002713ca7b), so reports use Claude Haiku, which
@@ -87,7 +88,8 @@ export function wire() {
   const jwt = process.env["ONECLICK_JWT"];
   const oneclick = new OneClickClient(jwt ? { jwt } : {});
   const reports = new FileReportStore(REPORTS_DIR);
-  const orchestrator = new Orchestrator({ policy, settlement, ledger, killSwitch, readBalances, sales: { oneclick, ai, rpc, reports, model: process.env["ATHERA_REPORT_MODEL"] || REPORT_MODEL } });
+  const orders = new FileOrderStore(ORDERS_DIR);
+  const orchestrator = new Orchestrator({ policy, settlement, ledger, killSwitch, readBalances, sales: { oneclick, ai, rpc, reports, orders, model: process.env["ATHERA_REPORT_MODEL"] || REPORT_MODEL } });
 
   /** Custody preflight: refuses to run with a full-access or mis-scoped key. */
   const preflight = async () => {
@@ -106,5 +108,5 @@ export function wire() {
     };
   };
 
-  return { policy, rpc, chain, ledger, killSwitch, settlement, orchestrator, signers, readBalances, preflight, ai, oneclick, reports };
+  return { policy, rpc, chain, ledger, killSwitch, settlement, orchestrator, signers, readBalances, preflight, ai, oneclick, reports, orders };
 }
